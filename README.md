@@ -34,14 +34,14 @@ def ptsa(Np, mean_rp, rel_std_rp, Df, k, max_search_num, rng)
 
 ### Limitations
 
-The aggregate generation might fail depending on the combination of (k, Df). N.Moteki tested only k=0.95, and Df= 2.35~2.95, 
+The aggregate generation might fail depending on the combination of (k, Df). N.Moteki tested only k=0.95, and Df= 2.35~2.95.
 
 
 ---
 
 ## 🚀 Installation
 
-The author developed and tested current aggregate_generator_PTSA (v0.1.1) using Python 3.12.8 in Windows 11 machines.
+The author developed and tested current aggregate_generator_PTSA (v0.1.3) using Python 3.12.8 in Windows 11 machines.
 
 #### 1. Clone the repository
 ```sh
@@ -96,7 +96,7 @@ Each `.ptsa` file contains `Np` lines of 4 tab-delimited floating point numbers 
 This project is licensed under the MIT License. See the LICENSE file for details.
 
 ## 📖 References
-- PTSA
+- PTSA algorithm
     - Singh, A. K., & Tsotsas, E. (2022). Influence of polydispersity and breakage on stochastic simulations of spray fluidized bed agglomeration. Chemical Engineering Science, 247, 117022.
 
 
