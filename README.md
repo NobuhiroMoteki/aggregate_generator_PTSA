@@ -1,7 +1,7 @@
 # aggregate_generator_PTSA
 
 ## 📌 Description
-A python code for the polydisperse tunable sequential aggregation (PTSA) algorithm by Singh, A. K., & Tsotsas, E. (2022). Momomer position is sequencially determined by a particle-cluster stochastic aggregation algorithm so as to satisfy all of the fractal scaling raw, surface-attachment condition, and non-overlapping condition. The monomer position is arbitrary, not being restricted to a gridded lattice space. A notable advantage of this PTSA algorithm is its capability of generating compact fractal-like aggregates with high Df (up to 2.95), where the conventional cluster-cluster aggregation (CCA) algorithm will easily break down.
+A python code for the polydisperse tunable sequential aggregation (PTSA) algorithm. Momomer position is sequencially determined by a particle-cluster stochastic aggregation algorithm so as to satisfy all of the fractal scaling raw, surface-attachment condition, and non-overlapping condition. The monomer position is arbitrary, not being restricted to a gridded lattice space. A notable advantage of this PTSA algorithm is its capability of generating compact fractal-like aggregates with high Df (up to 2.95), where the conventional cluster-cluster aggregation (CCA) algorithm will easily break down.
 
 ### Main Features
 - Aggregate generator function (ptsa) with inputs and outputs defined as follows:
