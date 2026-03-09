@@ -44,7 +44,7 @@ The aggregate generation might fail depending on the combination of (k, Df). N.M
 
 ## 🚀 Installation
 
-The author developed and tested current aggregate_generator_PTSA (v0.2.2) using Python 3.13.12 in Windows 11 and WSL2 (Ubuntu on Windows 11) machines.
+The author developed and tested current aggregate_generator_PTSA (v0.2.3) using Python 3.13.12 in Windows 11 and WSL2 (Ubuntu on Windows 11) machines.
 
 #### 1. Clone the repository
 ```sh
