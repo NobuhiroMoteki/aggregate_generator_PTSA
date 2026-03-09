@@ -1,9 +1,13 @@
 # aggregate_generator_PTSA
 
 ## 📌 Description
-A python code for the polydisperse tunable sequential aggregation (PTSA) algorithm. Momomer position is sequencially determined by a particle-cluster stochastic aggregation algorithm so as to satisfy all of the fractal scaling raw, surface-attachment condition, and non-overlapping condition. The monomer position is arbitrary, not being restricted to a gridded lattice space. A notable advantage of this PTSA algorithm is its capability of generating compact fractal-like aggregates with high Df (up to 2.95), where the conventional cluster-cluster aggregation (CCA) algorithm will easily break down.
+A Python code for the polydisperse tunable sequential aggregation (PTSA) algorithm. Monomer positions are sequentially determined by a particle-cluster stochastic aggregation algorithm so as to satisfy the fractal scaling law, surface-attachment condition, and non-overlapping condition. The monomer position is arbitrary, not being restricted to a gridded lattice space. A notable advantage of this PTSA algorithm is its capability of generating compact fractal-like aggregates with high Df (up to 2.95), where the conventional cluster-cluster aggregation (CCA) algorithm will easily break down.
+
+The inner search loop is accelerated by JIT compilation via [Numba](https://numba.pydata.org/) and an early-exit scalar overlap check, achieving a **2.8–3.5× speedup** over the naive vectorized implementation while producing bit-identical results.
 
 ### Main Features
+- **`ptsa`**: optimized aggregate generator with early-exit scalar overlap check (2.8–3.5× faster than the original)
+- **`ptsa_original`**: original vectorized implementation retained for reference and verification
 - Aggregate generator function (ptsa) with inputs and outputs defined as follows:
 
 ```
@@ -41,7 +45,7 @@ The aggregate generation might fail depending on the combination of (k, Df). N.M
 
 ## 🚀 Installation
 
-The author developed and tested current aggregate_generator_PTSA (v0.1.3) using Python 3.12.8 in Windows 11 machines.
+The author developed and tested current aggregate_generator_PTSA (v0.2.0) using Python 3.12.8 in Windows 11 and WSL2 (Ubuntu on Windows 11) machines.
 
 #### 1. Clone the repository
 ```sh
