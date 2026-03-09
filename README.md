@@ -3,11 +3,10 @@
 ## 📌 Description
 A Python code for the polydisperse tunable sequential aggregation (PTSA) algorithm. Monomer positions are sequentially determined by a particle-cluster stochastic aggregation algorithm so as to satisfy the fractal scaling law, surface-attachment condition, and non-overlapping condition. The monomer position is arbitrary, not being restricted to a gridded lattice space. A notable advantage of this PTSA algorithm is its capability of generating compact fractal-like aggregates with high Df (up to 2.95), where the conventional cluster-cluster aggregation (CCA) algorithm will easily break down.
 
-The inner search loop is accelerated by JIT compilation via [Numba](https://numba.pydata.org/) and an early-exit scalar overlap check, achieving a **2.8–3.5× speedup** over the naive vectorized implementation while producing bit-identical results.
+The inner search loop is accelerated by JIT compilation via [Numba](https://numba.pydata.org/) and an early-exit scalar overlap check, achieving a **2.8–3.5× speedup** over a naive vectorized implementation.
 
 ### Main Features
-- **`ptsa`**: optimized aggregate generator with early-exit scalar overlap check (2.8–3.5× faster than the original)
-- **`ptsa_original`**: original vectorized implementation retained for reference and verification
+- **`ptsa`**: aggregate generator with JIT compilation (Numba) and early-exit scalar overlap check
 - Aggregate generator function (ptsa) with inputs and outputs defined as follows:
 
 ```
@@ -45,7 +44,7 @@ The aggregate generation might fail depending on the combination of (k, Df). N.M
 
 ## 🚀 Installation
 
-The author developed and tested current aggregate_generator_PTSA (v0.2.1) using Python 3.13.12 in Windows 11 and WSL2 (Ubuntu on Windows 11) machines.
+The author developed and tested current aggregate_generator_PTSA (v0.2.2) using Python 3.13.12 in Windows 11 and WSL2 (Ubuntu on Windows 11) machines.
 
 #### 1. Clone the repository
 ```sh
