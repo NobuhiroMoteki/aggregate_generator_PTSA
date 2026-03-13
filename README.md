@@ -42,7 +42,7 @@ The aggregate generation might fail depending on the combination of (k, Df). N.M
 
 ## 🚀 Installation
 
-The author developed and tested current aggregate_generator_PTSA (v0.2.3) using Python 3.13.12 in Windows 11 and WSL2 (Ubuntu on Windows 11) machines.
+The author developed and tested current aggregate_generator_PTSA (v0.3.1) using Python 3.13.12 in Windows 11 and WSL2 (Ubuntu on Windows 11) machines.
 
 #### 1. Clone the repository
 ```sh
@@ -60,7 +60,7 @@ pip install -r requirements.txt
 
 ### Single execution
 
-1. Open `aggregate_ptsa_jit_single.ipynb` and specify the following parameters in the 4th cell:
+1. Open `aggregate_ptsa_single.ipynb` and specify the following parameters in the 4th cell:
    - mean monomer radius [μm]: `mean_rp`
    - relative standard deviation of monomer radius: `rel_std_rp`
    - number of monomers: `Np`
@@ -132,7 +132,7 @@ The exported `.ptsa` file is written to `./generated_agg_files/` with the filena
 agg_num={n}_k={k:.3f}_Df={Df:.2f}_meanRp={mean_rp:.3f}um_rstdRp={rel_std_rp:.2f}_Np={Np:05d}.ptsa
 ```
 
-ファイル名には入力パラメータのみ含まれる。computed properties (`Rve`, `Rg`, `eps_agg`) は HDF5 の group attributes および `catalog_YYYYMMDD_xx.csv` を参照すること。
+The filename contains input parameters only. Computed properties (`Rve`, `Rg`, `eps_agg`) are stored in the HDF5 group attributes and `catalog_YYYYMMDD_xx.csv`.
 
 ---
 
@@ -152,8 +152,7 @@ Positions are measured from the centroid of the aggregate.
 
 | Notebook | Purpose |
 | --- | --- |
-| `aggregate_ptsa_jit_single.ipynb` | Generate and visualise a single aggregate; write one `.ptsa` file |
-| `aggregate_ptsa_jit_batch.ipynb` | Legacy batch execution; writes individual `.ptsa` files per aggregate |
+| `aggregate_ptsa_single.ipynb` | Generate and visualise a single aggregate; write one `.ptsa` file |
 | `aggregate_ptsa_autogen_hdf5.ipynb` | Batch execution with HDF5 output and catalog CSV |
 | `export_ptsa_from_hdf5.ipynb` | Export one aggregate from HDF5 to `.ptsa` format for MSTM |
 
