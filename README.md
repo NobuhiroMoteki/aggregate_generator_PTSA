@@ -17,7 +17,7 @@ def ptsa(Np, mean_rp, rel_std_rp, Df, k, max_search_num, rng)
     ==== Input parameters ===
     Np: number of monomers
     mean_rp: mean of the normal distribution of the monomer radius
-    rel_std_rp: relative standard deviation of the normal distrituion of the monomer radius 
+    rel_std_rp: relative standard deviation of the normal distrituion of the monomer radius
     Df: fractal dimension
     k: fractal prefactor
     max_search_num: maximum number of iteration for searching a location of each monomer attached onto the surface of an aggregate (= 20000000)
@@ -32,8 +32,6 @@ def ptsa(Np, mean_rp, rel_std_rp, Df, k, max_search_num, rng)
     Rg: gyration radius of aggregate.
     eps_agg: porosity of the aggregate calculated using the gyration method.
 ```
-
-
 
 ### Limitations
 
@@ -62,36 +60,102 @@ pip install -r requirements.txt
 
 ### Single execution
 
-1. Open the JupyterNotebook file `aggregate_ptsa_jit_single.ipynb` and specify the user input value of the following  parameters in the 4th cell:
-   - mean monomer radius [μm]: `mean_rp` 
+1. Open `aggregate_ptsa_jit_single.ipynb` and specify the following parameters in the 4th cell:
+   - mean monomer radius [μm]: `mean_rp`
    - relative standard deviation of monomer radius: `rel_std_rp`
    - number of monomers: `Np`
    - fractal dimension: `Df`
    - fractal prefactor: `k`
-2. Execute the JupyterNotebook `aggregate_ptsa_jit_single.ipynb` (A 3D scatter plot of the generated aggregate will appear).
+2. Execute all cells (a 3D scatter plot of the generated aggregate will appear).
+3. The output `.ptsa` file is written to `./generated_agg_files/`.
 
-### Many executions (parameter sweep)
-1. Open the JupyterNotebook file `aggregate_ptsa_jit_batch.ipynb` and specify the user input value of the following  parameters in the 4th cell:
-   - mean monomer radius [μm]: `mean_rp` 
-   - relative standard deviation of monomer radius: `rel_std_rp`
-   - sweep condition for the number of monomers (linspace grid): `Np_min`, `Np_max`, `num_Np`
-   - sweep condition for fractal dimension (logspace grid): `Df_min`, `Df_max`, `num_Df`
-   - fractal prefactor: `k`
-   - index list of random aggregates : `agg_num_arr`
-  The index is used to discriminate aggregates with same set of parameters but with different random seeds. For example, set `agg_num_arr = [0,1,2]` if you generate 3 random aggregates for each set of parameters.
-2. Execute the JupyterNotebook `aggregate_ptsa_jit_batch.ipynb`. The generated aggregate files will be stored in the subfolder `.\generated_agg_files`.
+---
 
-### Output file format
-Filename indicates the set of parameter values of the aggregate.
-In single-execution case, we may have output file named
-`agg_k=0.900_Df=2.90_meanRp=0.020um_rstdRp=0.10_Np=00200_Rve=0.119um_Rg=0.133um_epsagg=0.668.ptsa`,
-where, the `Rve`, `Rg`, and `epsagg` respectively denote volume equivalent radius, gyration radius, and porosity of the generated aggregate.
+### Batch execution (parameter sweep) — HDF5 output
 
-In batch-execution case, we may have output file named
-`agg_num=4_k=0.950_Df=2.55_meanRp=0.020um_rstdRp=0.10_Np=00020_Rve=0.055um_Rg=0.065um_epsagg=0.716.ptsa`,
-where, the `agg_num` denotes the index of random aggregate.
+Use `aggregate_ptsa_autogen_hdf5.ipynb` to generate a large number of aggregates over a parameter grid and store them efficiently in a single HDF5 file.
 
-Each `.ptsa` file contains `Np` lines of 4 tab-delimited floating point numbers respectively indicating the monomer's center position and radius: `x  y  z  rp`. The position is measured from the centrod of the aggregate. The length unit is [μm].
+#### Step 1 — Set parameters (cell-4)
+
+| Parameter | Description |
+| --- | --- |
+| `mean_rp` | mean monomer radius [μm] |
+| `rel_std_rp` | relative std of monomer radius |
+| `Np_min`, `Np_max`, `num_Np` | linspace grid for number of monomers |
+| `Df_min`, `Df_max`, `num_Df` | linspace grid for fractal dimension |
+| `k` | fractal prefactor |
+| `agg_num_arr` | list of random-aggregate indices (e.g. `[0,1,2]` for 3 realisations per parameter set) |
+
+#### Step 2 — Execute cell-6
+
+Output files are written to `./generated_agg_files/`:
+
+| File | Naming rule | Contents |
+| --- | --- | --- |
+| HDF5 data | `aggregates_YYYYMMDD_xx.h5` | monomer coordinates + radii (gzip compressed) |
+| Catalog CSV | `catalog_YYYYMMDD_xx.csv` | one row per aggregate, all parameters + computed properties |
+
+`YYYYMMDD` is the execution date; `xx` is a zero-padded sequential index (00, 01, 02, …) that increments for each run on the same day. The HDF5 file and catalog CSV with the same `xx` always correspond to the same run.
+
+#### HDF5 internal structure
+
+Each aggregate is stored as an HDF5 group identified by its input parameters:
+
+```text
+aggregates_YYYYMMDD_xx.h5
+└── {agg_num}/{k:.3f}/{Df:.2f}/{mean_rp:.4f}/{rel_std_rp:.2f}/{Np:05d}/
+    ├── xp   — float64 (Np, 3)  monomer centre positions [μm]
+    └── rp   — float64 (Np,)    monomer radii [μm]
+    [attrs: agg_num, k, Df, mean_rp, rel_std_rp, Np, Rve, Rg, eps_agg]
+```
+
+The catalog CSV columns are: `agg_num`, `k`, `Df`, `mean_rp`, `rel_std_rp`, `Np`, `Rve`, `Rg`, `eps_agg`, `h5_file`, `h5_key`.
+
+#### Incremental / interrupted runs
+
+The HDF5 file is opened in append mode (`'a'`). If a group key already exists it is skipped, so interrupted runs can be safely resumed by re-executing cell-6.
+
+---
+
+### Export to MSTM input format (.ptsa)
+
+To convert a stored aggregate to the `.ptsa` CSV format required by the MSTM light-scattering code:
+
+1. Open `export_ptsa_from_hdf5.ipynb`.
+2. Execute cell-2 once to define the helper functions.
+3. Execute cell-3: available HDF5 files and catalog CSVs are listed automatically.
+4. Edit `h5_fname` and the aggregate parameters (`agg_num`, `k`, `Df`, `mean_rp`, `rel_std_rp`, `Np`) in cell-3 and re-execute.
+
+The exported `.ptsa` file is written to `./generated_agg_files/` with the filename:
+
+```text
+agg_num={n}_k={k:.3f}_Df={Df:.2f}_meanRp={mean_rp:.3f}um_rstdRp={rel_std_rp:.2f}_Np={Np:05d}.ptsa
+```
+
+ファイル名には入力パラメータのみ含まれる。computed properties (`Rve`, `Rg`, `eps_agg`) は HDF5 の group attributes および `catalog_YYYYMMDD_xx.csv` を参照すること。
+
+---
+
+### .ptsa file format
+
+Each `.ptsa` file contains `Np` lines of 4 space-delimited floating-point numbers:
+
+```text
+x [μm]   y [μm]   z [μm]   rp [μm]
+```
+
+Positions are measured from the centroid of the aggregate.
+
+---
+
+### Notebook overview
+
+| Notebook | Purpose |
+| --- | --- |
+| `aggregate_ptsa_jit_single.ipynb` | Generate and visualise a single aggregate; write one `.ptsa` file |
+| `aggregate_ptsa_jit_batch.ipynb` | Legacy batch execution; writes individual `.ptsa` files per aggregate |
+| `aggregate_ptsa_autogen_hdf5.ipynb` | Batch execution with HDF5 output and catalog CSV |
+| `export_ptsa_from_hdf5.ipynb` | Export one aggregate from HDF5 to `.ptsa` format for MSTM |
 
 ---
 

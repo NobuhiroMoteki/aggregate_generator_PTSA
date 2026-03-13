@@ -1,1 +1,4 @@
 myenv/
+.claude/
+old/
+generated_agg_files/
