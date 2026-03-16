@@ -96,24 +96,9 @@ meanRp={mean_rp:.3f}um_rstdRp={rel_std_rp:.2f}_k={k:.3f}_Df={Df:.2f}_Np={Np:05d}
 
 ### Batch execution (parameter sweep) — HDF5 output
 
-Generate a large number of aggregates over a parameter grid and store them efficiently in a single HDF5 file. Both a Jupyter notebook (`dev/aggregate_ptsa_autogen_hdf5.ipynb`) and a standalone Python script are provided.
+Generate a large number of aggregates over a parameter grid and store them efficiently in a single HDF5 file.
 
-#### Option A — Notebook (`dev/aggregate_ptsa_autogen_hdf5.ipynb`)
-
-Set parameters in cell-4, then execute cell-6.
-
-| Parameter | Description |
-| --- | --- |
-| `mean_rp` | mean monomer radius [μm] (constant) |
-| `rel_std_rp` | relative std of monomer radius (constant) |
-| `k` | fractal prefactor (constant) |
-| `Df_min`, `Df_max`, `num_Df` | linspace grid for fractal dimension (sweep) |
-| `Np_min`, `Np_max`, `num_Np` | linspace grid for number of monomers (sweep) |
-| `agg_num_arr` | list of random-aggregate indices (sweep), e.g. `[0,1,2]` for 3 realisations |
-
-#### Option B — Script (`aggregate_ptsa_autogen_hdf5.py`)
-
-All parameters can be specified via command-line arguments (defaults match the notebook):
+All parameters can be specified via command-line arguments:
 
 ```sh
 # Run with default parameters:
@@ -159,21 +144,13 @@ The catalog CSV columns are: `mean_rp`, `rel_std_rp`, `k`, `Df`, `Np`, `agg_num`
 
 #### Incremental / interrupted runs
 
-The HDF5 file is opened in append mode (`'a'`). If a group key already exists it is skipped, so interrupted runs can be safely resumed by re-executing cell-6.
+The HDF5 file is opened in append mode (`'a'`). If a group key already exists it is skipped, so interrupted runs can be safely resumed by re-running the script.
 
 ---
 
 ### Export to MSTM input format (.ptsa)
 
 Convert a stored aggregate to the `.ptsa` CSV format required by the MSTM light-scattering code.
-
-#### Option A — Notebook (`dev/export_ptsa_from_hdf5.ipynb`)
-
-1. Execute cell-2 once to define the helper functions.
-1. Execute cell-3: available HDF5 files and catalog CSVs are listed automatically.
-1. Edit `h5_fname` and the aggregate parameters in cell-3 and re-execute.
-
-#### Option B — Script (`export_ptsa_from_hdf5.py`)
 
 **All parameters are required** (no defaults) to prevent silent mismatches:
 
@@ -222,8 +199,6 @@ Positions are measured from the centroid of the aggregate.
 | `aggregate_ptsa_single.ipynb` | Generate and visualise a single aggregate; write `.ptsa` and `.jpg` files |
 | `aggregate_ptsa_autogen_hdf5.py` | Batch execution (CLI script) with HDF5 output and catalog CSV |
 | `export_ptsa_from_hdf5.py` | Export one aggregate from HDF5 to `.ptsa` format (CLI script) |
-| `dev/aggregate_ptsa_autogen_hdf5.ipynb` | Batch execution (notebook, for development) |
-| `dev/export_ptsa_from_hdf5.ipynb` | Export from HDF5 (notebook, for development) |
 
 ---
 
