@@ -1,15 +1,17 @@
 # aggregate_generator_PTSA
 
 ## 📌 Description
+
 A Python code for the polydisperse tunable sequential aggregation (PTSA) algorithm. Monomer positions are sequentially determined by a particle-cluster stochastic aggregation algorithm so as to satisfy the fractal scaling law, surface-attachment condition, and non-overlapping condition. The monomer position is arbitrary, not being restricted to a gridded lattice space. A notable advantage of this PTSA algorithm is its capability of generating compact fractal-like aggregates with high Df (up to 2.95), where the conventional cluster-cluster aggregation (CCA) algorithm will easily break down.
 
 The inner search loop is accelerated by JIT compilation via [Numba](https://numba.pydata.org/) and an early-exit scalar overlap check, achieving a **2.8–3.5× speedup** over a naive vectorized implementation.
 
 ### Main Features
+
 - **`ptsa`**: aggregate generator with JIT compilation (Numba) and early-exit scalar overlap check
 - Aggregate generator function (ptsa) with inputs and outputs defined as follows:
 
-```
+```text
 def ptsa(Np, mean_rp, rel_std_rp, Df, k, max_search_num, rng)
     Polydisperse tunable sequential aggregation (PTSA) method for generating fractal-like aggregate.
     Monomer radius follows a normal distribution with specified mean and standard deviation.
@@ -20,7 +22,7 @@ def ptsa(Np, mean_rp, rel_std_rp, Df, k, max_search_num, rng)
     rel_std_rp: relative standard deviation of the normal distrituion of the monomer radius
     Df: fractal dimension
     k: fractal prefactor
-    max_search_num: maximum number of iteration for searching a location of each monomer attached onto the surface of an aggregate (= 20000000)
+    max_search_num: maximum number of iteration for searching a location of each monomer attached onto the surface of an aggregate (default: 100000000)
     rng: random number generator constructed by the numpy.random.default_rng()
 
     === Output variables ===
@@ -37,7 +39,6 @@ def ptsa(Np, mean_rp, rel_std_rp, Df, k, max_search_num, rng)
 
 The aggregate generation might fail depending on the combination of (k, Df). N.Moteki tested only k=0.95, and Df= 2.35~2.95.
 
-
 ---
 
 ## 🚀 Installation
@@ -45,48 +46,93 @@ The aggregate generation might fail depending on the combination of (k, Df). N.M
 The author developed and tested current aggregate_generator_PTSA (v0.3.1) using Python 3.13.12 in Windows 11 and WSL2 (Ubuntu on Windows 11) machines.
 
 #### 1. Clone the repository
+
 ```sh
 git clone https://github.com/NobuhiroMoteki/aggregate_generator_PTSA.git
 cd aggregate_generator_PTSA
 ```
 
 #### 2. Install dependencies
+
 ```sh
 pip install -r requirements.txt
 ```
+
 ---
 
 ## 🔧 Usage
+
+### Parameter ordering convention
+
+Throughout the codebase, parameters are ordered as **constants first, then sweep variables**:
+
+1. `mean_rp` — mean monomer radius [μm] (constant)
+2. `rel_std_rp` — relative std of monomer radius (constant)
+3. `k` — fractal prefactor (constant)
+4. `Df` — fractal dimension (sweep variable)
+5. `Np` — number of monomers (sweep variable)
+6. `agg_num` — aggregate index (sweep variable, batch only)
+
+This ordering is applied consistently to HDF5 group keys, HDF5 attributes, catalog CSV columns, and output filenames.
+
+---
 
 ### Single execution
 
 1. Open `aggregate_ptsa_single.ipynb` and specify the following parameters in the 4th cell:
    - mean monomer radius [μm]: `mean_rp`
    - relative standard deviation of monomer radius: `rel_std_rp`
-   - number of monomers: `Np`
-   - fractal dimension: `Df`
    - fractal prefactor: `k`
-2. Execute all cells (a 3D scatter plot of the generated aggregate will appear).
-3. The output `.ptsa` file is written to `./generated_agg_files/`.
+   - fractal dimension: `Df`
+   - number of monomers: `Np`
+2. Execute all cells. A 3D scatter plot of the generated aggregate will appear and be saved as a 300 dpi JPEG.
+3. The output `.ptsa` and `.jpg` files are written to `./generated_agg_files/` with the filename:
+
+```text
+meanRp={mean_rp:.3f}um_rstdRp={rel_std_rp:.2f}_k={k:.3f}_Df={Df:.2f}_Np={Np:05d}_Rve={Rve:.3f}um_Rg={Rg:.3f}um_epsagg={eps_agg:.3f}.ptsa
+```
 
 ---
 
 ### Batch execution (parameter sweep) — HDF5 output
 
-Use `aggregate_ptsa_autogen_hdf5.ipynb` to generate a large number of aggregates over a parameter grid and store them efficiently in a single HDF5 file.
+Generate a large number of aggregates over a parameter grid and store them efficiently in a single HDF5 file. Both a Jupyter notebook (`dev/aggregate_ptsa_autogen_hdf5.ipynb`) and a standalone Python script are provided.
 
-#### Step 1 — Set parameters (cell-4)
+#### Option A — Notebook (`dev/aggregate_ptsa_autogen_hdf5.ipynb`)
+
+Set parameters in cell-4, then execute cell-6.
 
 | Parameter | Description |
 | --- | --- |
-| `mean_rp` | mean monomer radius [μm] |
-| `rel_std_rp` | relative std of monomer radius |
-| `Np_min`, `Np_max`, `num_Np` | linspace grid for number of monomers |
-| `Df_min`, `Df_max`, `num_Df` | linspace grid for fractal dimension |
-| `k` | fractal prefactor |
-| `agg_num_arr` | list of random-aggregate indices (e.g. `[0,1,2]` for 3 realisations per parameter set) |
+| `mean_rp` | mean monomer radius [μm] (constant) |
+| `rel_std_rp` | relative std of monomer radius (constant) |
+| `k` | fractal prefactor (constant) |
+| `Df_min`, `Df_max`, `num_Df` | linspace grid for fractal dimension (sweep) |
+| `Np_min`, `Np_max`, `num_Np` | linspace grid for number of monomers (sweep) |
+| `agg_num_arr` | list of random-aggregate indices (sweep), e.g. `[0,1,2]` for 3 realisations |
 
-#### Step 2 — Execute cell-6
+#### Option B — Script (`aggregate_ptsa_autogen_hdf5.py`)
+
+All parameters can be specified via command-line arguments (defaults match the notebook):
+
+```sh
+# Run with default parameters:
+python aggregate_ptsa_autogen_hdf5.py
+
+# Custom sweep:
+python aggregate_ptsa_autogen_hdf5.py \
+    --mean_rp 0.015 --rel_std_rp 0.10 --k 0.95 \
+    --Df_min 2.35 --Df_max 2.95 --num_Df 2 \
+    --Np_min 100 --Np_max 400 --num_Np 4 \
+    --agg_num 0 1 2
+
+# Show all options:
+python aggregate_ptsa_autogen_hdf5.py -h
+```
+
+At startup the script displays the parameter grid size and the estimated volume-equivalent radius range (monodisperse approximation: `Rve = mean_rp * Np^(1/3)`).
+
+#### Output files
 
 Output files are written to `./generated_agg_files/`:
 
@@ -99,17 +145,17 @@ Output files are written to `./generated_agg_files/`:
 
 #### HDF5 internal structure
 
-Each aggregate is stored as an HDF5 group identified by its input parameters:
+Each aggregate is stored as an HDF5 group. The group path follows the parameter ordering convention (constants first, sweep variables after):
 
 ```text
 aggregates_YYYYMMDD_xx.h5
-└── {agg_num}/{k:.3f}/{Df:.2f}/{mean_rp:.4f}/{rel_std_rp:.2f}/{Np:05d}/
+└── {mean_rp:.4f}/{rel_std_rp:.2f}/{k:.3f}/{Df:.2f}/{Np:05d}/{agg_num}/
     ├── xp   — float64 (Np, 3)  monomer centre positions [μm]
     └── rp   — float64 (Np,)    monomer radii [μm]
-    [attrs: agg_num, k, Df, mean_rp, rel_std_rp, Np, Rve, Rg, eps_agg]
+    [attrs: mean_rp, rel_std_rp, k, Df, Np, agg_num, Rve, Rg, eps_agg]
 ```
 
-The catalog CSV columns are: `agg_num`, `k`, `Df`, `mean_rp`, `rel_std_rp`, `Np`, `Rve`, `Rg`, `eps_agg`, `h5_file`, `h5_key`.
+The catalog CSV columns are: `mean_rp`, `rel_std_rp`, `k`, `Df`, `Np`, `agg_num`, `Rve`, `Rg`, `eps_agg`, `h5_file`, `h5_key`.
 
 #### Incremental / interrupted runs
 
@@ -119,17 +165,38 @@ The HDF5 file is opened in append mode (`'a'`). If a group key already exists it
 
 ### Export to MSTM input format (.ptsa)
 
-To convert a stored aggregate to the `.ptsa` CSV format required by the MSTM light-scattering code:
+Convert a stored aggregate to the `.ptsa` CSV format required by the MSTM light-scattering code.
 
-1. Open `export_ptsa_from_hdf5.ipynb`.
-2. Execute cell-2 once to define the helper functions.
-3. Execute cell-3: available HDF5 files and catalog CSVs are listed automatically.
-4. Edit `h5_fname` and the aggregate parameters (`agg_num`, `k`, `Df`, `mean_rp`, `rel_std_rp`, `Np`) in cell-3 and re-execute.
+#### Option A — Notebook (`dev/export_ptsa_from_hdf5.ipynb`)
+
+1. Execute cell-2 once to define the helper functions.
+1. Execute cell-3: available HDF5 files and catalog CSVs are listed automatically.
+1. Edit `h5_fname` and the aggregate parameters in cell-3 and re-execute.
+
+#### Option B — Script (`export_ptsa_from_hdf5.py`)
+
+**All parameters are required** (no defaults) to prevent silent mismatches:
+
+```sh
+# List available HDF5 files and catalogs:
+python export_ptsa_from_hdf5.py --list
+
+# Export a specific aggregate (all 7 arguments are required):
+python export_ptsa_from_hdf5.py \
+    --h5_file aggregates_20260316_00.h5 \
+    --mean_rp 0.020 --rel_std_rp 0.15 --k 0.90 \
+    --Df 2.40 --Np 100 --agg_num 0
+
+# Show all options:
+python export_ptsa_from_hdf5.py -h
+```
+
+If any argument is missing, the error message shows which arguments are needed and the correct parameter order. If the specified key does not exist in the HDF5 file, example keys from the file are displayed to help identify the mismatch.
 
 The exported `.ptsa` file is written to `./generated_agg_files/` with the filename:
 
 ```text
-agg_num={n}_k={k:.3f}_Df={Df:.2f}_meanRp={mean_rp:.3f}um_rstdRp={rel_std_rp:.2f}_Np={Np:05d}.ptsa
+meanRp={mean_rp:.3f}um_rstdRp={rel_std_rp:.2f}_k={k:.3f}_Df={Df:.2f}_Np={Np:05d}_agg_num={n}.ptsa
 ```
 
 The filename contains input parameters only. Computed properties (`Rve`, `Rg`, `eps_agg`) are stored in the HDF5 group attributes and `catalog_YYYYMMDD_xx.csv`.
@@ -148,28 +215,29 @@ Positions are measured from the centroid of the aggregate.
 
 ---
 
-### Notebook overview
+### File overview
 
-| Notebook | Purpose |
+| File | Purpose |
 | --- | --- |
-| `aggregate_ptsa_single.ipynb` | Generate and visualise a single aggregate; write one `.ptsa` file |
-| `aggregate_ptsa_autogen_hdf5.ipynb` | Batch execution with HDF5 output and catalog CSV |
-| `export_ptsa_from_hdf5.ipynb` | Export one aggregate from HDF5 to `.ptsa` format for MSTM |
+| `aggregate_ptsa_single.ipynb` | Generate and visualise a single aggregate; write `.ptsa` and `.jpg` files |
+| `aggregate_ptsa_autogen_hdf5.py` | Batch execution (CLI script) with HDF5 output and catalog CSV |
+| `export_ptsa_from_hdf5.py` | Export one aggregate from HDF5 to `.ptsa` format (CLI script) |
+| `dev/aggregate_ptsa_autogen_hdf5.ipynb` | Batch execution (notebook, for development) |
+| `dev/export_ptsa_from_hdf5.ipynb` | Export from HDF5 (notebook, for development) |
 
 ---
 
 ## 📝 License
+
 This project is licensed under the MIT License. See the LICENSE file for details.
 
 ## 📖 References
+
 - PTSA algorithm
-    - Singh, A. K., & Tsotsas, E. (2022). Influence of polydispersity and breakage on stochastic simulations of spray fluidized bed agglomeration. Chemical Engineering Science, 247, 117022.
-
-
+  - Singh, A. K., & Tsotsas, E. (2022). Influence of polydispersity and breakage on stochastic simulations of spray fluidized bed agglomeration. Chemical Engineering Science, 247, 117022.
 
 ## 📢 Author
+
 Name: Nobuhiro Moteki
 GitHub: @NobuhiroMoteki
-Email: nobuhiro.moteki@gmail.com
-
-
+Email: <nobuhiro.moteki@gmail.com>
