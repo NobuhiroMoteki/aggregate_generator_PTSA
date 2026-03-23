@@ -9,6 +9,7 @@ The inner search loop is accelerated by JIT compilation via [Numba](https://numb
 ### Main Features
 
 - **`ptsa`**: aggregate generator with JIT compilation (Numba) and early-exit scalar overlap check
+- **Multi-core parallelism**: batch script distributes `agg_num` jobs across CPU cores via `ProcessPoolExecutor` (`--workers` option)
 - Aggregate generator function (ptsa) with inputs and outputs defined as follows:
 
 ```text
@@ -43,7 +44,7 @@ The aggregate generation might fail depending on the combination of (k, Df). N.M
 
 ## 🚀 Installation
 
-The author developed and tested current aggregate_generator_PTSA (v0.3.1) using Python 3.13.12 in Windows 11 and WSL2 (Ubuntu on Windows 11) machines.
+The author developed and tested current aggregate_generator_PTSA (v0.4.0) using Python 3.13.12 in Windows 11 and WSL2 (Ubuntu on Windows 11) machines.
 
 #### 1. Clone the repository
 
@@ -111,11 +112,25 @@ python aggregate_ptsa_autogen_hdf5.py \
     --Np_min 100 --Np_max 400 --num_Np 4 \
     --agg_num 0 1 2
 
+# Use 4 parallel worker processes:
+python aggregate_ptsa_autogen_hdf5.py --workers 4
+
 # Show all options:
 python aggregate_ptsa_autogen_hdf5.py -h
 ```
 
-At startup the script displays the parameter grid size and the estimated volume-equivalent radius range (monodisperse approximation: `Rve = mean_rp * Np^(1/3)`).
+At startup the script displays the parameter grid size, the estimated volume-equivalent radius range (monodisperse approximation: `Rve = mean_rp * Np^(1/3)`), and the number of worker processes.
+
+#### Parallelism (`--workers`)
+
+The `agg_num` loop is parallelised across CPU cores using `ProcessPoolExecutor`. Each worker process handles all `(Df, Np)` combinations for one `agg_num` and writes to a temporary HDF5 file; the main process merges the results in completion order.
+
+| Option | Default | Behaviour |
+| --- | --- | --- |
+| `--workers N` | all CPU cores | Use `N` worker processes |
+| *(omitted)* | `os.cpu_count()` | Automatically capped at `len(agg_num)` |
+
+> **Note**: Because each worker compiles Numba JIT independently, compilation overhead is incurred once per worker process at startup.
 
 #### Output files
 

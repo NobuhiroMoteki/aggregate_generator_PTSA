@@ -21,6 +21,7 @@ import argparse
 import glob
 import os
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import date
 
 import h5py
@@ -167,6 +168,96 @@ def warmup():
 
 
 # ---------------------------------------------------------------------------
+# Worker (runs in subprocess)
+# ---------------------------------------------------------------------------
+def _worker(packed):
+    """Generate all (Df, Np) aggregates for one agg_num and write to a temp HDF5."""
+    (agg_num, Df_arr, Np_arr,
+     mean_rp, rel_std_rp, k, max_search, max_try,
+     out_dir, h5_fname, existing_keys) = packed
+
+    # JIT warmup inside each worker process
+    ptsa(20, mean_rp, rel_std_rp, 2.9, 0.9, 1_000_000, np.random.default_rng())
+
+    tmp_path = os.path.join(out_dir, f"_tmp_agg{agg_num:04d}.h5")
+    records = []
+
+    with h5py.File(tmp_path, "w") as h5f:
+        for Df in Df_arr:
+            for Np in Np_arr:
+                key = make_h5key(mean_rp, rel_std_rp, k, Df, Np, agg_num)
+                if key in existing_keys:
+                    continue
+
+                for i_try in range(max_try):
+                    print(f"  agg_num={agg_num:02d}, Df={Df:.2f}, Np={Np:05d}, "
+                          f"try={i_try:02d}", flush=True)
+                    rng = np.random.default_rng()
+                    t0 = time.perf_counter()
+                    Np_final, xp, rp, _, Rve, Rg, eps_agg = ptsa(
+                        Np, mean_rp, rel_std_rp, Df, k, max_search, rng)
+                    elapsed_min = (time.perf_counter() - t0) / 60
+                    print(f"    Np_final={Np_final:05d}, {elapsed_min:.2f} min",
+                          flush=True)
+
+                    if Np_final != Np:
+                        if i_try < max_try - 1:
+                            continue
+                        print(f"    FAILED after {max_try} tries: {key}", flush=True)
+                        break
+
+                    grp = h5f.create_group(key)
+                    grp.create_dataset("xp", data=xp,
+                                       compression="gzip", compression_opts=4)
+                    grp.create_dataset("rp", data=rp,
+                                       compression="gzip", compression_opts=4)
+                    grp.attrs.update({
+                        "mean_rp":    float(mean_rp),
+                        "rel_std_rp": float(rel_std_rp),
+                        "k":          float(k),
+                        "Df":         float(round(Df, 2)),
+                        "Np":         int(Np),
+                        "agg_num":    int(agg_num),
+                        "Rve":        float(Rve),
+                        "Rg":         float(Rg),
+                        "eps_agg":    float(eps_agg),
+                    })
+                    records.append({
+                        "mean_rp":    float(mean_rp),
+                        "rel_std_rp": float(rel_std_rp),
+                        "k":          float(k),
+                        "Df":         float(round(Df, 2)),
+                        "Np":         int(Np),
+                        "agg_num":    int(agg_num),
+                        "Rve":        float(Rve),
+                        "Rg":         float(Rg),
+                        "eps_agg":    float(eps_agg),
+                        "h5_file":    h5_fname,
+                        "h5_key":     key,
+                    })
+                    break
+
+    return tmp_path, records
+
+
+def _merge_h5(src_path, dst_path):
+    """Recursively copy all groups/datasets from src into dst (skip duplicates)."""
+    def _copy(src_grp, dst_grp):
+        for attr_k, attr_v in src_grp.attrs.items():
+            dst_grp.attrs[attr_k] = attr_v
+        for k, v in src_grp.items():
+            if isinstance(v, h5py.Group):
+                child = dst_grp.require_group(k)
+                _copy(v, child)
+            else:
+                if k not in dst_grp:
+                    src_grp.copy(k, dst_grp)
+
+    with h5py.File(src_path, "r") as src, h5py.File(dst_path, "a") as dst:
+        _copy(src, dst)
+
+
+# ---------------------------------------------------------------------------
 # Main batch loop
 # ---------------------------------------------------------------------------
 def run_batch(args):
@@ -191,79 +282,46 @@ def run_batch(args):
     total = n_agg * len(Df_arr) * len(Np_arr)
     Rve_min = args.mean_rp * args.Np_min ** (1 / 3)
     Rve_max = args.mean_rp * args.Np_max ** (1 / 3)
+    n_workers = min(args.workers, n_agg)
     print(f"Parameter grid: {n_agg} agg_num x {len(Df_arr)} Df x {len(Np_arr)} Np = {total} aggregates")
     print(f"Estimated Rve range: {Rve_min:.4f} -- {Rve_max:.4f} um "
-          f"(monodisperse approx: Rve = mean_rp * Np^(1/3))\n")
+          f"(monodisperse approx: Rve = mean_rp * Np^(1/3))")
+    print(f"Workers: {n_workers}\n")
+
+    # Collect already-completed keys to skip
+    existing_keys: set = set()
+    if os.path.exists(h5_path):
+        with h5py.File(h5_path, "r") as h5f:
+            h5f.visititems(lambda name, obj: existing_keys.add(name)
+                           if isinstance(obj, h5py.Group) else None)
+
+    packed_args = [
+        (agg_num, Df_arr, Np_arr,
+         args.mean_rp, args.rel_std_rp, args.k,
+         args.max_search, args.max_try,
+         out_dir, h5_fname, existing_keys)
+        for agg_num in args.agg_num
+    ]
 
     new_records = []
 
-    # Build flat task list for tqdm
-    tasks = [(agg_num, Df, Np)
-             for agg_num in args.agg_num
-             for Df in Df_arr
-             for Np in Np_arr]
-
-    with h5py.File(h5_path, "a") as h5f:
-        pbar = tqdm(tasks, desc="Generating", unit="agg",
-                    bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} "
-                               "[{elapsed}<{remaining}, {rate_fmt}]")
-        for agg_num, Df, Np in pbar:
-            key = make_h5key(args.mean_rp, args.rel_std_rp, args.k, Df, Np, agg_num)
-            pbar.set_postfix_str(f"Df={Df:.2f} Np={Np:5d} agg={agg_num}")
-
-            if key in h5f:
+    with ProcessPoolExecutor(max_workers=n_workers) as executor:
+        futures = {executor.submit(_worker, p): p[0] for p in packed_args}
+        pbar = tqdm(as_completed(futures), total=len(futures),
+                    desc="agg_num completed", unit="agg_num")
+        for future in pbar:
+            agg_num = futures[future]
+            try:
+                tmp_path, records = future.result()
+            except Exception as exc:
+                print(f"\nagg_num={agg_num} raised: {exc}", flush=True)
                 continue
 
-            for i_try in range(args.max_try):
-                tqdm.write(f"  agg_num={agg_num:02d}, Df={Df:.2f}, Np={Np:05d}, "
-                           f"try={i_try:02d}")
-                rng = np.random.default_rng()
-                t0 = time.perf_counter()
-                Np_final, xp, rp, V, Rve, Rg, eps_agg = ptsa(
-                    Np, args.mean_rp, args.rel_std_rp, Df, args.k,
-                    args.max_search, rng)
-                elapsed_min = (time.perf_counter() - t0) / 60
-                tqdm.write(f"    Np_final={Np_final:05d}, {elapsed_min:.2f} min")
-
-                if Np_final != Np:
-                    if i_try < args.max_try - 1:
-                        continue
-                    tqdm.write(f"    FAILED after {args.max_try} tries: {key}")
-                    break
-
-                # Success: write to HDF5
-                grp = h5f.create_group(key)
-                grp.create_dataset("xp", data=xp,
-                                   compression="gzip", compression_opts=4)
-                grp.create_dataset("rp", data=rp,
-                                   compression="gzip", compression_opts=4)
-                grp.attrs.update({
-                    "mean_rp":    float(args.mean_rp),
-                    "rel_std_rp": float(args.rel_std_rp),
-                    "k":          float(args.k),
-                    "Df":         float(round(Df, 2)),
-                    "Np":         int(Np),
-                    "agg_num":    int(agg_num),
-                    "Rve":        float(Rve),
-                    "Rg":         float(Rg),
-                    "eps_agg":    float(eps_agg),
-                })
-                new_records.append({
-                    "mean_rp":    float(args.mean_rp),
-                    "rel_std_rp": float(args.rel_std_rp),
-                    "k":          float(args.k),
-                    "Df":         float(round(Df, 2)),
-                    "Np":         int(Np),
-                    "agg_num":    int(agg_num),
-                    "Rve":        float(Rve),
-                    "Rg":         float(Rg),
-                    "eps_agg":    float(eps_agg),
-                    "h5_file":    h5_fname,
-                    "h5_key":     key,
-                })
-                break
-
-        pbar.close()
+            # Merge temp HDF5 into final file
+            _merge_h5(tmp_path, h5_path)
+            os.remove(tmp_path)
+            new_records.extend(records)
+            pbar.set_postfix_str(f"last agg_num={agg_num}")
 
     # Write catalog CSV
     if new_records:
@@ -316,6 +374,10 @@ def parse_args():
                    help="Max iterations per monomer search (default: 1e8)")
     p.add_argument("--max_try",    type=int, default=20,
                    help="Max retries per aggregate (default: 20)")
+
+    # Parallelism
+    p.add_argument("--workers", type=int, default=os.cpu_count(),
+                   help="Number of parallel worker processes (default: all CPUs)")
 
     # Output
     p.add_argument("--out_dir", type=str, default="./generated_agg_files/",
