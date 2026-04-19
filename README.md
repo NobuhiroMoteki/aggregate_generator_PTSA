@@ -1,5 +1,7 @@
 # aggregate_generator_PTSA
 
+[![Latest version](https://img.shields.io/github/v/tag/NobuhiroMoteki/aggregate_generator_PTSA?label=version&sort=semver)](https://github.com/NobuhiroMoteki/aggregate_generator_PTSA/tags)
+
 ## 📌 Description
 
 A Python code for the polydisperse tunable sequential aggregation (PTSA) algorithm. Monomer positions are sequentially determined by a particle-cluster stochastic aggregation algorithm so as to satisfy the fractal scaling law, surface-attachment condition, and non-overlapping condition. The monomer position is arbitrary, not being restricted to a gridded lattice space. A notable advantage of this PTSA algorithm is its capability of generating compact fractal-like aggregates with high Df (up to 2.95), where the conventional cluster-cluster aggregation (CCA) algorithm will easily break down.
@@ -44,7 +46,7 @@ The aggregate generation might fail depending on the combination of (k, Df). N.M
 
 ## 🚀 Installation
 
-The author developed and tested current aggregate_generator_PTSA (v0.4.0) using Python 3.13.12 in Windows 11 and WSL2 (Ubuntu on Windows 11) machines.
+The author developed and tested current aggregate_generator_PTSA using Python 3.13.12 in Windows 11 and WSL2 (Ubuntu on Windows 11) machines.
 
 #### 1. Clone the repository
 
