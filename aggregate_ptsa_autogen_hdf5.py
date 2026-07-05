@@ -192,7 +192,11 @@ def _worker(packed):
                 for i_try in range(max_try):
                     print(f"  agg_num={agg_num:02d}, Df={Df:.2f}, Np={Np:05d}, "
                           f"try={i_try:02d}", flush=True)
-                    rng = np.random.default_rng()
+                    # Capture the RNG entropy so this random aggregate is
+                    # reproducible from stored metadata (pcas_lut_schema
+                    # geometry_interchange: required `seed_entropy`).
+                    seed_seq = np.random.SeedSequence()
+                    rng = np.random.default_rng(seed_seq)
                     t0 = time.perf_counter()
                     Np_final, xp, rp, _, Rve, Rg, eps_agg = ptsa(
                         Np, mean_rp, rel_std_rp, Df, k, max_search, rng)
@@ -211,29 +215,33 @@ def _worker(packed):
                                        compression="gzip", compression_opts=4)
                     grp.create_dataset("rp", data=rp,
                                        compression="gzip", compression_opts=4)
+                    # SeedSequence.entropy can exceed int64; store as string.
+                    seed_entropy = str(seed_seq.entropy)
                     grp.attrs.update({
-                        "mean_rp":    float(mean_rp),
-                        "rel_std_rp": float(rel_std_rp),
-                        "k":          float(k),
-                        "Df":         float(round(Df, 2)),
-                        "Np":         int(Np),
-                        "agg_num":    int(agg_num),
-                        "Rve":        float(Rve),
-                        "Rg":         float(Rg),
-                        "eps_agg":    float(eps_agg),
+                        "mean_rp":      float(mean_rp),
+                        "rel_std_rp":   float(rel_std_rp),
+                        "k":            float(k),
+                        "Df":           float(round(Df, 2)),
+                        "Np":           int(Np),
+                        "agg_num":      int(agg_num),
+                        "Rve":          float(Rve),
+                        "Rg":           float(Rg),
+                        "eps_agg":      float(eps_agg),
+                        "seed_entropy": seed_entropy,
                     })
                     records.append({
-                        "mean_rp":    float(mean_rp),
-                        "rel_std_rp": float(rel_std_rp),
-                        "k":          float(k),
-                        "Df":         float(round(Df, 2)),
-                        "Np":         int(Np),
-                        "agg_num":    int(agg_num),
-                        "Rve":        float(Rve),
-                        "Rg":         float(Rg),
-                        "eps_agg":    float(eps_agg),
-                        "h5_file":    h5_fname,
-                        "h5_key":     key,
+                        "mean_rp":      float(mean_rp),
+                        "rel_std_rp":   float(rel_std_rp),
+                        "k":            float(k),
+                        "Df":           float(round(Df, 2)),
+                        "Np":           int(Np),
+                        "agg_num":      int(agg_num),
+                        "Rve":          float(Rve),
+                        "Rg":           float(Rg),
+                        "eps_agg":      float(eps_agg),
+                        "seed_entropy": seed_entropy,
+                        "h5_file":      h5_fname,
+                        "h5_key":       key,
                     })
                     break
 
