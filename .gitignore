@@ -2,3 +2,5 @@ myenv/
 .claude/
 old/
 generated_agg_files/
+# Python bytecode cache
+__pycache__/
