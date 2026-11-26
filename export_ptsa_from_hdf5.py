@@ -38,8 +38,11 @@ def make_h5key(mean_rp, rel_std_rp, k, Df, Np, agg_num):
 # ---------------------------------------------------------------------------
 def list_files(out_dir):
     """Print available HDF5 files and catalog CSVs."""
-    h5_files = sorted(glob.glob(os.path.join(out_dir, "aggregates_????????_??.h5")))
-    cat_files = sorted(glob.glob(os.path.join(out_dir, "catalog_????????_??.csv")))
+    # PTSA: aggregates_YYYYMMDD_xx.h5, CCA: aggregates_cca_YYYYMMDD_xx.h5
+    h5_files = sorted(glob.glob(os.path.join(out_dir, "aggregates_????????_??.h5"))
+                      + glob.glob(os.path.join(out_dir, "aggregates_cca_????????_??.h5")))
+    cat_files = sorted(glob.glob(os.path.join(out_dir, "catalog_????????_??.csv"))
+                       + glob.glob(os.path.join(out_dir, "catalog_cca_????????_??.csv")))
 
     print("Available HDF5 files:")
     if h5_files:
@@ -108,13 +111,20 @@ def export_to_ptsa(h5_path, mean_rp, rel_std_rp, k, Df, Np, agg_num,
         grp = h5f[key]
         xp = grp["xp"][:]   # shape (Np, 3)  [um]
         rp = grp["rp"][:]   # shape (Np,)    [um]
+        # Files written before the CCA option have no "method" attribute.
+        method = grp.attrs.get("method", "ptsa")
+        if isinstance(method, bytes):
+            method = method.decode()
 
     Np_act = xp.shape[0]
 
-    # Filename: constants first, then sweep variables
+    # Filename: constants first, then sweep variables.  PTSA keeps the
+    # original name; other methods get a suffix so they never overwrite it
+    # (the name still starts with "meanRp=", as in pcas_lut_schema).
+    suffix = "" if method == "ptsa" else f"_method={method}"
     ofname = (
         f"meanRp={mean_rp:.3f}um_rstdRp={rel_std_rp:.2f}_k={k:.3f}"
-        f"_Df={Df:.2f}_Np={Np_act:05d}_agg_num={agg_num:01d}.ptsa"
+        f"_Df={Df:.2f}_Np={Np_act:05d}_agg_num={agg_num:01d}{suffix}.ptsa"
     )
     fpath = os.path.join(output_dir, ofname)
 

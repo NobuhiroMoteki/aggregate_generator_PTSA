@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Batch generator for fractal-like aggregates using the PTSA algorithm.
+Batch generator for fractal-like aggregates.
+Two algorithms are available (--method):
+  ptsa : polydisperse tunable sequential aggregation (particle-cluster, default)
+  cca  : tunable cluster-cluster aggregation (tcca.py, Filippov et al. 2000)
 Outputs are stored in a single HDF5 file with a companion catalog CSV.
 
 Usage examples
@@ -12,6 +15,11 @@ python aggregate_ptsa_autogen_hdf5.py
 python aggregate_ptsa_autogen_hdf5.py \
     --mean_rp 0.020 --Np_min 100 --Np_max 1000 --num_Np 10 \
     --Df_min 2.40 --Df_max 2.80 --num_Df 5 --agg_num 0 1 2
+
+# Same sweep with tunable cluster-cluster aggregation:
+python aggregate_ptsa_autogen_hdf5.py --method cca \
+    --mean_rp 0.020 --Np_min 100 --Np_max 1000 --num_Np 10 \
+    --Df_min 1.80 --Df_max 2.40 --num_Df 4 --agg_num 0 1 2
 
 # Show all options:
 python aggregate_ptsa_autogen_hdf5.py -h
@@ -29,6 +37,8 @@ import numba
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+
+from tcca import tcca
 
 
 # ---------------------------------------------------------------------------
@@ -155,15 +165,31 @@ def make_h5key(mean_rp, rel_std_rp, k, Df, Np, agg_num):
     return f"{mean_rp:.4f}/{rel_std_rp:.2f}/{k:.3f}/{Df:.2f}/{Np:05d}/{agg_num}"
 
 
+def output_prefix(method):
+    """File-name prefix: PTSA keeps the original names; CCA gets its own files."""
+    return "" if method == "ptsa" else f"{method}_"
+
+
+def generate(method, Np, mean_rp, rel_std_rp, Df, k, max_search, cca_opts, rng):
+    """Dispatch to the selected generator. Returns the ptsa output tuple."""
+    if method == "ptsa":
+        return ptsa(Np, mean_rp, rel_std_rp, Df, k, max_search, rng)
+    return tcca(Np, mean_rp, rel_std_rp, Df, k, max_search=max_search,
+                rng=rng, **cca_opts)
+
+
 # ---------------------------------------------------------------------------
 # JIT warm-up
 # ---------------------------------------------------------------------------
-def warmup():
-    """Run ptsa once with small Np to trigger Numba compilation."""
-    print("JIT compiling ptsa ... ", end="", flush=True)
+def warmup(method="ptsa"):
+    """Run the generator once with small Np to trigger Numba compilation."""
+    print(f"JIT compiling {method} ... ", end="", flush=True)
     t0 = time.perf_counter()
     rng = np.random.default_rng()
-    ptsa(20, 0.015, 0.1, 2.9, 0.9, 1000000, rng)
+    if method == "ptsa":
+        ptsa(20, 0.015, 0.1, 2.9, 0.9, 1000000, rng)
+    else:
+        tcca(20, 0.015, 0.1, 2.0, 1.0, rng=rng)
     print(f"done ({time.perf_counter() - t0:.1f}s)")
 
 
@@ -174,12 +200,24 @@ def _worker(packed):
     """Generate all (Df, Np) aggregates for one agg_num and write to a temp HDF5."""
     (agg_num, Df_arr, Np_arr,
      mean_rp, rel_std_rp, k, max_search, max_try,
-     out_dir, h5_fname, existing_keys) = packed
+     out_dir, h5_fname, existing_keys, method, cca_opts) = packed
 
     # JIT warmup inside each worker process
-    ptsa(20, mean_rp, rel_std_rp, 2.9, 0.9, 1_000_000, np.random.default_rng())
+    if method == "ptsa":
+        ptsa(20, mean_rp, rel_std_rp, 2.9, 0.9, 1_000_000,
+             np.random.default_rng())
+    else:
+        tcca(20, mean_rp, rel_std_rp, 2.0, 1.0, rng=np.random.default_rng())
 
-    tmp_path = os.path.join(out_dir, f"_tmp_agg{agg_num:04d}.h5")
+    # Method-specific attributes (CCA only; PTSA attributes are unchanged
+    # except for the added "method" field)
+    extra = {}
+    if method == "cca":
+        extra = {"cca_n_SA": int(cca_opts["n_SA"]),
+                 "cca_tol": float(cca_opts["tol"])}
+
+    tmp_path = os.path.join(
+        out_dir, f"_tmp_{output_prefix(method)}agg{agg_num:04d}.h5")
     records = []
 
     with h5py.File(tmp_path, "w") as h5f:
@@ -198,8 +236,9 @@ def _worker(packed):
                     seed_seq = np.random.SeedSequence()
                     rng = np.random.default_rng(seed_seq)
                     t0 = time.perf_counter()
-                    Np_final, xp, rp, _, Rve, Rg, eps_agg = ptsa(
-                        Np, mean_rp, rel_std_rp, Df, k, max_search, rng)
+                    Np_final, xp, rp, _, Rve, Rg, eps_agg = generate(
+                        method, Np, mean_rp, rel_std_rp, Df, k, max_search,
+                        cca_opts, rng)
                     elapsed_min = (time.perf_counter() - t0) / 60
                     print(f"    Np_final={Np_final:05d}, {elapsed_min:.2f} min",
                           flush=True)
@@ -228,6 +267,8 @@ def _worker(packed):
                         "Rg":           float(Rg),
                         "eps_agg":      float(eps_agg),
                         "seed_entropy": seed_entropy,
+                        "method":       method,
+                        **extra,
                     })
                     records.append({
                         "mean_rp":      float(mean_rp),
@@ -242,6 +283,10 @@ def _worker(packed):
                         "seed_entropy": seed_entropy,
                         "h5_file":      h5_fname,
                         "h5_key":       key,
+                        # appended after h5_key: the pcas_lut_schema
+                        # catalog columns keep their order
+                        "method":       method,
+                        **extra,
                     })
                     break
 
@@ -274,10 +319,13 @@ def run_batch(args):
 
     # Determine output filenames
     date_str = date.today().strftime("%Y%m%d")
-    existing = sorted(glob.glob(os.path.join(out_dir, f"aggregates_{date_str}_??.h5")))
+    pre = output_prefix(args.method)
+    existing = sorted(glob.glob(
+        os.path.join(out_dir, f"aggregates_{pre}{date_str}_??.h5")))
     next_id = len(existing)
-    h5_fname = f"aggregates_{date_str}_{next_id:02d}.h5"
-    catalog_fname = f"catalog_{date_str}_{next_id:02d}.csv"
+    h5_fname = f"aggregates_{pre}{date_str}_{next_id:02d}.h5"
+    catalog_fname = f"catalog_{pre}{date_str}_{next_id:02d}.csv"
+    print(f"Method      : {args.method}")
     h5_path = os.path.join(out_dir, h5_fname)
     catalog_path = os.path.join(out_dir, catalog_fname)
     print(f"HDF5 output : {h5_path}")
@@ -303,11 +351,22 @@ def run_batch(args):
             h5f.visititems(lambda name, obj: existing_keys.add(name)
                            if isinstance(obj, h5py.Group) else None)
 
+    cca_opts = {"n_SA": args.cca_n_SA, "tol": args.cca_tol,
+                "iter1max": args.cca_iter1max, "iter2max": args.cca_iter2max}
+    if args.method == "cca":
+        print(f"CCA options : {cca_opts}")
+        if args.k + args.Df_max > 3.5:
+            print(f"WARNING: k + Df_max = {args.k + args.Df_max:.2f} > 3.5. "
+                  "CCA usually fails for compact aggregates (k=0.95: "
+                  "Df > ~2.6), and each failure is retried --max_try times. "
+                  "Use --method ptsa for that range.")
+        print()
+
     packed_args = [
         (agg_num, Df_arr, Np_arr,
          args.mean_rp, args.rel_std_rp, args.k,
          args.max_search, args.max_try,
-         out_dir, h5_fname, existing_keys)
+         out_dir, h5_fname, existing_keys, args.method, cca_opts)
         for agg_num in args.agg_num
     ]
 
@@ -345,10 +404,13 @@ def run_batch(args):
 # ---------------------------------------------------------------------------
 def parse_args():
     p = argparse.ArgumentParser(
-        description="Batch-generate PTSA fractal aggregates and store in HDF5.",
+        description="Batch-generate fractal aggregates (PTSA or CCA) and store in HDF5.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
+    p.add_argument("--method", choices=("ptsa", "cca"), default="ptsa",
+                   help="Aggregation algorithm: ptsa (particle-cluster) or "
+                        "cca (tunable cluster-cluster) (default: ptsa)")
     # Constant parameters
     p.add_argument("--mean_rp",    type=float, default=0.015,
                    help="Mean monomer radius [um] (default: 0.015)")
@@ -379,9 +441,22 @@ def parse_args():
 
     # Solver limits
     p.add_argument("--max_search", type=int, default=100_000_000,
-                   help="Max iterations per monomer search (default: 1e8)")
+                   help="Max iterations per monomer search; for cca, used in "
+                        "the initial SA clusters (default: 1e8)")
     p.add_argument("--max_try",    type=int, default=20,
                    help="Max retries per aggregate (default: 20)")
+
+    # CCA-only options (ignored for ptsa)
+    p.add_argument("--cca_n_SA", type=int, default=4,
+                   help="[cca] Max monomers in the initial SA clusters "
+                        "(C++ num_sph_SA) (default: 4)")
+    p.add_argument("--cca_tol", type=float, default=1e-2,
+                   help="[cca] Contact window: surface gap < cca_tol*mean_rp "
+                        "(C++ tol/a) (default: 1e-2)")
+    p.add_argument("--cca_iter1max", type=int, default=1000,
+                   help="[cca] Max random translations per merge (default: 1000)")
+    p.add_argument("--cca_iter2max", type=int, default=10000,
+                   help="[cca] Max random rotations per translation (default: 10000)")
 
     # Parallelism
     p.add_argument("--workers", type=int, default=os.cpu_count(),
@@ -396,5 +471,5 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    warmup()
+    warmup(args.method)
     run_batch(args)
