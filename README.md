@@ -189,6 +189,17 @@ For each merge, one cluster is moved to a random point on that sphere and the ot
 
 `k_eff = Np / (Rg_F / a_c)^Df` is computed with `tcca.fractal_prefactor_filippov`. Contacts are pairs with a surface gap below 0.02 mean_rp. In this test, `Rg` and `eps_agg` of the two methods agree to within 0.1 %. This agreement is empirical: `ptsa` uses a count-based law with the radius of the newly added monomer, not the `a_c` law of `cca`. At Df = 2.55 the CCA aggregates are clearly more elongated. At Df = 2.35 the difference in elongation is within the scatter, and CCA has slightly fewer contacts. Relative to `a = mean_rp` instead of `a_c`, k_eff is about 0.88 for both methods.
 
+**Speed** (k = 0.95, rel_std_rp = 0.10; one aggregate per process, wall time of one successful try):
+
+| Np | Df | ptsa | cca |
+| --- | --- | --- | --- |
+| 2048 | 2.35 | 13.0 s | 3.2 s |
+| 2048 | 2.55 | 6.0 s | 5.8 s |
+| 21,720 | 1.8 / 2.0 / 2.35 | not measured | 19 / 13 / 12 s (median of 3) |
+| 21,720 | 2.55 | not measured | 79 s (median of 3, max 140 s) |
+
+The Np = 2048 rows are means of 30 aggregates with the same seeds for both methods. All times were measured on an i9-14900K while about 30 of its 32 threads were busy, so compare ratios rather than absolute values. The CCA time grows with Df because the two clusters must interpenetrate more deeply. With `--method cca` at Df ≥ 2.7, one failed try takes 3–50 s and is repeated `--max_try` times.
+
 **Feasible range of `cca`** (k = 0.95, rel_std_rp = 0.10; successes out of 10 seeds, one try each):
 
 | Df | 1.8–2.5 | 2.6 | 2.7 | 2.8 | 2.9 |
