@@ -24,9 +24,11 @@ Algorithm (as in the C++ code)
 
 Extensions beyond the C++ code
 ------------------------------
-* Arbitrary Np.  The C++ code supports only Np = num_sph_SA * 2**levels.  Here
-  a cluster of N monomers is built by merging clusters of floor(N/2) and
-  ceil(N/2) monomers, recursively, until N <= n_SA.  For Np = n_SA * 2**L
+* Arbitrary Np.  The C++ code supports only Np = num_sph_SA * 2**levels.
+  Filippov et al. (2000) allow clusters of unequal size, so the final size
+  need not be a power of 2.  Here a cluster of N monomers is built by
+  merging clusters of floor(N/2) and ceil(N/2) monomers, recursively, until
+  N <= n_SA.  For Np = n_SA * 2**L
   this is the C++ hierarchy.  The Filippov formula is applied with float
   arithmetic, so it holds for N1 != N2.
 * Polydisperse monomers.  Radii follow the same clipped normal distribution
@@ -666,3 +668,39 @@ def fractal_prefactor_filippov(xp, rp, Df, a=None):
     xc = xp - np.sum(mp[:, None] * xp, axis=0) / np.sum(mp)  # shape: (Np, 3)
     RgF = np.sqrt(np.sum(mp * (np.sum(xc ** 2, axis=1) + rp ** 2)) / np.sum(mp))
     return xp.shape[0] / (RgF / a) ** Df
+
+
+@numba.njit
+def _pair_histogram(xp, edges):
+    """Counts of monomer pairs (i < j) per centre-distance bin, shape (len(edges)-1,)."""
+    n = xp.shape[0]
+    nb = edges.shape[0] - 1
+    counts = np.zeros(nb, dtype=np.int64)
+    lo = edges[0]
+    hi = edges[nb]
+    for i in range(n):
+        for j in range(i + 1, n):
+            d = np.sqrt((xp[i, 0] - xp[j, 0]) ** 2 + (xp[i, 1] - xp[j, 1]) ** 2
+                        + (xp[i, 2] - xp[j, 2]) ** 2)
+            if d < lo or d >= hi:
+                continue
+            k = np.searchsorted(edges, d, side="right") - 1
+            counts[k] += 1
+    return counts
+
+
+def pair_correlation(xp, edges):
+    """Two-point correlation function C(r) of Filippov et al. (2000), Eq. [11].
+
+    C(r) = n(r) / (N * V_shell(r)), where n(r) is the number of monomer pairs
+    whose centre distance lies in the bin and V_shell = 4*pi/3*(r2**3 - r1**3).
+    Normalisation: integral of C(r) 4 pi r**2 dr over all r = (N - 1)/2 (Eq. [12]).
+
+    xp    : shape (N, 3), monomer centres
+    edges : shape (n_bins + 1,), bin edges in the unit of xp (ascending)
+    Returns C, shape (n_bins,), in the unit of xp**-3.
+    """
+    edges = np.ascontiguousarray(edges, dtype=np.float64)
+    counts = _pair_histogram(np.ascontiguousarray(xp, dtype=np.float64), edges)
+    shell = 4.0 * np.pi / 3.0 * (edges[1:] ** 3 - edges[:-1] ** 3)
+    return counts / (xp.shape[0] * shell)

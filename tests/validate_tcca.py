@@ -142,6 +142,16 @@ def test_reproducibility():
     check("reproducible from stored seed_entropy string", np.array_equal(d[1], e[1]))
 
 
+def test_pair_correlation():
+    out = tcca.tcca(300, 1.0, 0.1, 2.0, 1.2, rng=np.random.default_rng(3))
+    edges = np.linspace(0.0, 200.0, 2001)
+    edges[0] = 1e-9
+    C = tcca.pair_correlation(out[1], edges)
+    integral = np.sum(C * 4 / 3 * np.pi * (edges[1:] ** 3 - edges[:-1] ** 3))
+    check("pair correlation normalisation = (N-1)/2",
+          np.isclose(integral, (300 - 1) / 2, rtol=1e-12), f"({integral})")
+
+
 def test_failure():
     t0 = time.perf_counter()
     out = tcca.tcca(256, 0.015, 0.0, 2.95, 0.95, iter1max=20, iter2max=200,
@@ -159,6 +169,7 @@ if __name__ == "__main__":
     test_monodisperse_formula()
     test_generation()
     test_reproducibility()
+    test_pair_correlation()
     test_failure()
     print()
     if FAILED:

@@ -160,7 +160,7 @@ For each merge, one cluster is moved to a random point on that sphere and the ot
 
 **Extensions beyond the C++ code** (`rel_std_rp = 0` reproduces the C++ formulas exactly):
 
-- *Any Np.* The C++ code allows only `Np = n_SA * 2^levels`. Here a cluster of N monomers is built from clusters of `floor(N/2)` and `ceil(N/2)` monomers, recursively. For `Np = n_SA * 2^L` this is the C++ hierarchy.
+- *Any Np.* The C++ code allows only `Np = n_SA * 2^levels`. Filippov et al. (2000) already allow clusters of unequal size, so the final size need not be a power of 2. Here a cluster of N monomers is built from clusters of `floor(N/2)` and `ceil(N/2)` monomers, recursively. For `Np = n_SA * 2^L` this is the C++ hierarchy.
 - *Polydisperse monomers.* Radii follow the same distribution as in `ptsa`. Centroids and `Rg_F` are mass weighted, with the self term `r_i^2`. The length scale `a` of a cluster is its mass-weighted rms monomer radius, `a^2 = sum(m_i r_i^2) / sum(m_i)`. A fixed `a = mean_rp` makes small clusters geometrically impossible when their monomers are larger than the mean.
 - *Failure handling.* The C++ code loops forever or aborts. Here two cases are distinguished:
   - A step that is geometrically impossible is detected before the random search. This is typical at low Df, where the required centroid distance exceeds the reach of the two clusters. The sub-cluster is then rebuilt from scratch with new radii (at most `max_rebuild = 100` times). Redrawing the whole sub-cluster is a rejection step, so the aggregates follow the same distribution as restarting the whole aggregate.
@@ -188,6 +188,8 @@ For each merge, one cluster is moved to a random point on that sphere and the ot
 | 2.55 | cca | 20.92 ± 0.01 | 0.8931 | 0.950 (exact) | 2.030 ± 0.001 | 3.15 ± 0.08 |
 
 `k_eff = Np / (Rg_F / a_c)^Df` is computed with `tcca.fractal_prefactor_filippov`. Contacts are pairs with a surface gap below 0.02 mean_rp. In this test, `Rg` and `eps_agg` of the two methods agree to within 0.1 %. This agreement is empirical: `ptsa` uses a count-based law with the radius of the newly added monomer, not the `a_c` law of `cca`. At Df = 2.55 the CCA aggregates are clearly more elongated. At Df = 2.35 the difference in elongation is within the scatter, and CCA has slightly fewer contacts. Relative to `a = mean_rp` instead of `a_c`, k_eff is about 0.88 for both methods.
+
+The two-point correlation function `C(r)` (Filippov et al., 2000) shows the difference more directly. TCCA has a scaling range whose local slope is close to the prescribed Df. PTSA, like the pure sequential algorithm of Filippov et al., has no such plateau at Df ≤ 2.35. At Df = 2.55 the two methods are indistinguishable. See `docs/theory_note.pdf` and `analysis/` for details.
 
 **Speed** (k = 0.95, rel_std_rp = 0.10; one aggregate per process, wall time of one successful try):
 
@@ -299,6 +301,8 @@ Positions are measured from the centroid of the aggregate.
 | `aggregate_ptsa_autogen_hdf5.py` | Batch execution (CLI script) with HDF5 output and catalog CSV; `--method ptsa` or `cca` |
 | `tcca.py` | Tunable cluster-cluster aggregation (`tcca`) and geometry diagnostics |
 | `export_ptsa_from_hdf5.py` | Export one aggregate from HDF5 to `.ptsa` format (CLI script) |
+| `analysis/correlation_compare.py`, `analysis/plot_correlation.py` | Two-point correlation function of PTSA, TCCA and SA aggregates (results in `docs/theory_note.pdf`) |
+| `docs/theory_note.tex` | Theory note on both algorithms (build: `latexmk -pdf docs/theory_note.tex`) |
 | `tests/validate_tcca.py` | Validation of `tcca` (geometry, fractal law, C++ formulas, reproducibility): `python tests/validate_tcca.py` |
 
 ---
