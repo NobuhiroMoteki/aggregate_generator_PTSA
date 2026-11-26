@@ -4,3 +4,13 @@ old/
 generated_agg_files/
 # Python bytecode cache
 __pycache__/
+
+# LaTeX build products
+docs/*.aux
+docs/*.log
+docs/*.fls
+docs/*.fdb_latexmk
+docs/*.out
+docs/*.toc
+docs/*.synctex.gz
+docs/literature/
