@@ -7,9 +7,11 @@
 \usepackage{siunitx}       % \SI{3e8}{\meter\per\second}
 \usepackage{booktabs}      % \toprule \midrule \bottomrule
 \usepackage{array}
+\usepackage{graphicx}
 \usepackage{hyperref}      % LAST package
 
 \newcommand{\Df}{D_\text{f}}
+\graphicspath{{./figs/}}
 
 \title{Reading note: physics-based simulation of soot restructuring\\
 by condensation and evaporation of water}
@@ -27,6 +29,8 @@ The contact mechanics of the model are physically grounded and partly constraine
 The capillary driving force is a prescribed sigmoid and is not derived from the liquid.
 The fraction of intact necks is prescribed, yet it controls the outcome.
 A physics-based water process therefore needs three additions: a capillary bridge force derived from the meniscus, a liquid distribution from condensation and evaporation, and a neck fracture criterion.
+We reproduced the restructuring results of the paper with the public code and its input files.
+Aggregates from the tunable cluster-cluster aggregation of this repository give the same restructured morphology within the statistical uncertainty.
 \end{abstract}
 
 %======================================================================
@@ -166,7 +170,8 @@ The same random seed (0) selects the removed necks in all runs.
   \item The necking fraction controls the pathway.
         With few necks, peripheral monomers collapse locally and interlock, which stops further compaction.
         With nearly all necks intact, whole branches move and the compaction is global.
-  \item Without necks the final coordination number is 4.48.
+  \item The text states a final coordination number of 4.48 without necks.
+        Figure~8 of the paper and our reproduction give 4.85 (Sec.~\ref{sec:repro}), so 4.48 is a typographical error.
         The two-dimensional convexity of the final aggregates is 0.80--0.81 for necking fractions of 0\,\% and 70\,\%.
         Experiments report 0.75--0.87.
 \end{itemize}
@@ -251,6 +256,115 @@ Code from \texttt{soot-dem-gui} could only be included under GPL-3.0.
 Running its executables to produce data imposes no license obligation on the data.
 
 %======================================================================
+\section{Reproduction with \texttt{soot-dem}}
+\label{sec:repro}
+
+\subsection{Setup}
+
+We built \texttt{soot-dem} at tag \texttt{v1} (commit \texttt{7572f45}), which corresponds to the submitted article.
+We ran the restructuring inputs of the Supplemental Material unchanged, except that the number of dumps was reduced from 500 to 50 (one per \si{\nano\second}).
+This gives 50 aggregates at each of 10 necking fractions, or 500 runs.
+Each run used one thread and took about \SI{21}{\minute}.
+The runs are chaotic, and their trajectories change with the compiler and the number of threads.
+Only statistics over the 50 aggregates can therefore be compared with the paper.
+
+We repeated the 500 runs with aggregates from the tunable cluster-cluster aggregation (TCCA) of this repository.
+They have the same $\Df = 1.8$, $k_\text{f} = 1.4$ and $N = 150$ monomers of equal radius.
+They were written in FLAGE format and replace the published aggregates one for one.
+The TCCA set has 50 distinct aggregates, whereas the published set has 49 (Table~\ref{tab:demidov-parameters}).
+The radius of gyration of the monomer centres is $13.38\,r$ for TCCA and $(13.12 \pm 0.12)\,r$ for FLAGE (mean and standard deviation).
+The FLAGE aggregates thus correspond to $k_\text{f} \approx 1.46$ in the same definition.
+The scripts are in \texttt{analysis/dem/} of the repository.
+
+\subsection{Morphology metrics}
+
+The coordination number counts neighbours whose surface gap is below \SI{1}{\percent} of the monomer diameter ($0.02\,r$).
+The three-dimensional convexity is $N \cdot \tfrac{4}{3}\pi r^3 / V_\text{hull}$, where $V_\text{hull}$ is the volume of the convex hull of the monomer centres.
+The two-dimensional convexity is the projected area of the aggregate divided by the area of the convex hull of the projected centres.
+It is averaged over the $xy$, $xz$ and $yz$ projections.
+The hull of the centres reproduces the values of the paper in both cases.
+The hull of the spheres or discs gives clearly smaller values.
+For example, it gives 0.63 instead of 0.82 for the two-dimensional convexity without necks.
+The paper defines the three-dimensional convexity as the ratio of the aggregate volume to the volume of the convex hull constructed around the aggregate.
+It does not state whether the hull encloses the spheres or only their centres.
+
+\subsection{Results}
+
+Table~\ref{tab:repro} and Fig.~\ref{fig:dem-compare} compare the terminal values at \SI{49}{\nano\second} with Fig.~8 of the paper.
+\begin{itemize}
+  \item With the published aggregates, the coordination number and the three-dimensional convexity agree with the paper at all necking fractions.
+        The deviations are within the 95\,\% confidence intervals and the reading uncertainty of the figure.
+  \item The initial values also agree: coordination number $2.113 \pm 0.004$ against about 2.05--2.1, and convexity $0.107 \pm 0.001$ against about 0.105.
+  \item The two-dimensional convexity is $0.817 \pm 0.026$ without necks and $0.779 \pm 0.023$ with \SI{70}{\percent} necks.
+        The paper reports $0.81 \pm 0.03$ and $0.80 \pm 0.03$.
+  \item The time evolution has the shape of Figs.~8(a) and 8(c) of the paper.
+        The coordination number saturates after about \SI{10}{\nano\second}, while the convexity still grows slowly at \SI{49}{\nano\second}.
+\end{itemize}
+Together with Eq.~\eqref{eq:contact-velocity} and the bond parameters of Sec.~\ref{sec:si}, these results show that \texttt{soot-dem} \texttt{v1} reproduces the published restructuring results.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Terminal coordination number and three-dimensional convexity (hull of centres) at \SI{49}{\nano\second}.
+  Means over 50 aggregates with 95\,\% confidence intervals.
+  The values of the paper are read off its Fig.~8 with an uncertainty of about $\pm 0.05$ and $\pm 0.01$.}
+  \label{tab:repro}
+  \small
+  \begin{tabular}{rcccccc}
+    \toprule
+    & \multicolumn{3}{c}{Coordination number} & \multicolumn{3}{c}{Convexity (3D)} \\
+    \cmidrule(lr){2-4}\cmidrule(lr){5-7}
+    Necks (\%) & FLAGE & TCCA & Paper & FLAGE & TCCA & Paper \\
+    \midrule
+    initial & $2.113 \pm 0.004$ & $2.042 \pm 0.002$ & 2.05--2.1 & $0.107 \pm 0.001$ & $0.100 \pm 0.001$ & 0.105 \\
+    0   & $4.849 \pm 0.028$ & $4.843 \pm 0.029$ & 4.85 & $0.311 \pm 0.021$ & $0.295 \pm 0.023$ & 0.300 \\
+    15  & $4.618 \pm 0.026$ & $4.644 \pm 0.022$ & 4.65 & $0.291 \pm 0.015$ & $0.301 \pm 0.023$ & 0.295 \\
+    30  & $4.387 \pm 0.028$ & $4.384 \pm 0.025$ & 4.40 & $0.293 \pm 0.017$ & $0.297 \pm 0.017$ & 0.290 \\
+    50  & $3.899 \pm 0.028$ & $3.934 \pm 0.027$ & 3.90 & $0.269 \pm 0.015$ & $0.260 \pm 0.013$ & 0.270 \\
+    70  & $3.321 \pm 0.027$ & $3.314 \pm 0.024$ & 3.35 & $0.228 \pm 0.013$ & $0.227 \pm 0.012$ & 0.235 \\
+    80  & $3.003 \pm 0.024$ & $2.988 \pm 0.019$ & 3.00 & $0.207 \pm 0.012$ & $0.198 \pm 0.008$ & 0.210 \\
+    90  & $2.674 \pm 0.021$ & $2.665 \pm 0.020$ & 2.65 & $0.182 \pm 0.009$ & $0.174 \pm 0.010$ & 0.180 \\
+    95  & $2.498 \pm 0.022$ & $2.463 \pm 0.019$ & 2.45 & $0.162 \pm 0.009$ & $0.162 \pm 0.010$ & 0.160 \\
+    98  & $2.402 \pm 0.018$ & $2.365 \pm 0.015$ & 2.35 & $0.155 \pm 0.008$ & $0.151 \pm 0.006$ & 0.150 \\
+    100 & $2.324 \pm 0.019$ & $2.257 \pm 0.017$ & 2.30 & $0.146 \pm 0.007$ & $0.144 \pm 0.006$ & 0.145 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{dem_compare.pdf}
+  \caption{Restructuring of 150-monomer aggregates by the sigmoid capillary force.
+  (a), (c) Time evolution of the coordination number and the three-dimensional convexity for the published aggregates at selected necking fractions.
+  As in Fig.~8 of Ref.~\cite{demidov2024}, panel (a) averages the first 20 aggregates and panel (c) all 50.
+  (b), (d) Terminal values against necking fraction for the published FLAGE aggregates and the TCCA aggregates of this repository, with 95\,\% confidence intervals.
+  The dotted line shows values read off Fig.~8 of Ref.~\cite{demidov2024}.}
+  \label{fig:dem-compare}
+\end{figure}
+
+\subsection{Dependence on the aggregate generator}
+
+The TCCA aggregates restructure to the same morphology as the FLAGE aggregates.
+\begin{itemize}
+  \item The three-dimensional convexity shows no significant difference at any necking fraction.
+        The largest difference is 1.2 standard errors.
+        The two-dimensional convexity agrees as well ($0.802 \pm 0.032$ without necks and $0.780 \pm 0.023$ with \SI{70}{\percent} necks).
+  \item The coordination number agrees up to \SI{90}{\percent} necks.
+        At 95, 98 and \SI{100}{\percent} it is lower for TCCA by $0.036$, $0.037$ and $0.067$, or 2.4, 3.1 and 5.2 standard errors.
+\end{itemize}
+The difference at high necking fractions comes from the initial structure.
+The TCCA aggregates start with fewer contacts (coordination number 2.042 against 2.113), because they contain fewer incidental contacts besides the tree of the aggregation.
+With all necks intact the contacts are fixed, and the initial difference of $-0.071$ persists.
+The increase during the run differs by only $0.004 \pm 0.023$ at \SI{100}{\percent} necks.
+With fewer necks the aggregates forget their initial contacts and reach the same terminal value.
+The TCCA aggregates then gain 0.03--0.10 more contacts than the FLAGE aggregates.
+The \SI{2}{\percent} larger radius of gyration of the TCCA set has no detectable effect.
+
+For $\Df = 1.8$ and $N = 150$, the choice between FLAGE and the TCCA of this repository therefore does not change the restructured morphology.
+Only the number of contacts carries over when nearly all necks are intact.
+The TCCA aggregates of this repository can thus serve as input for the later stages.
+Whether this holds for PTSA aggregates, polydisperse monomers and larger $N$ has not been tested.
+
+%======================================================================
 \section{Implications and proposed plan}
 \label{sec:plan}
 
@@ -260,7 +374,7 @@ We propose four stages.
 Each stage ends with a check before the next starts.
 
 \begin{enumerate}
-  \item \textbf{Reproduce the paper.}
+  \item \textbf{Reproduce the paper} (completed, Sec.~\ref{sec:repro}).
         Build \texttt{soot-dem} on the desktop.
         Run the published input files and reproduce the coordination number and convexity against necking fraction (Fig.~8 of Ref.~\cite{demidov2024}).
         Then replace the FLAGE aggregates by monodisperse TCCA aggregates from this repository with the same $\Df = 1.8$, $k_\text{f} = 1.4$ and $N = 150$, written in FLAGE format.
@@ -280,9 +394,11 @@ Each stage ends with a check before the next starts.
 \end{enumerate}
 
 Whether stages 2--4 are written in C++ inside \texttt{soot-dem} or in Python and Numba in this repository is open.
-Stage~1 gives the information needed to decide: run time, code structure, and how the results depend on the capillary model.
-The explicit integration at \SI{5}{\femto\second} over \SI{50}{\nano\second} needs $10^7$ steps.
-For $N \sim 10^3$--$10^4$ this favours compiled code or a quasi-static energy minimisation.
+Stage~1 gave the run time and showed that the aggregate generator does not matter at $N = 150$ (Sec.~\ref{sec:repro}).
+The explicit integration at \SI{5}{\femto\second} over \SI{50}{\nano\second} needs $10^7$ steps, which take about \SI{21}{\minute} on one core for $N = 150$.
+The force loop of \texttt{soot-dem} visits every pair of monomers (Supplemental Material), so the cost grows as $N^2$.
+For $N = 10^4$ this extrapolates to about $1.5 \times 10^3$ core hours per run.
+Large aggregates therefore need a neighbour list, a quasi-static energy minimisation, or both.
 
 %======================================================================
 \section{Reading list}

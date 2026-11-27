@@ -303,6 +303,8 @@ Positions are measured from the centroid of the aggregate.
 | `export_ptsa_from_hdf5.py` | Export one aggregate from HDF5 to `.ptsa` format (CLI script) |
 | `analysis/correlation_compare.py`, `analysis/plot_correlation.py` | Two-point correlation function of PTSA, TCCA and SA aggregates (results in `docs/theory_note.pdf`) |
 | `docs/theory_note.tex` | Theory note on both algorithms (build: `latexmk -pdf docs/theory_note.tex`) |
+| `analysis/dem/` | DEM restructuring runs with soot-dem (Demidov et al., 2024): reproduction of the paper and the same runs with TCCA aggregates (see `analysis/dem/README.md`) |
+| `docs/restructuring_review.tex` | Reading note on physics-based soot restructuring by water, with the soot-dem reproduction |
 | `tests/validate_tcca.py` | Validation of `tcca` (geometry, fractal law, C++ formulas, reproducibility): `python tests/validate_tcca.py` |
 
 ---
