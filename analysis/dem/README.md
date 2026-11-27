@@ -13,6 +13,13 @@ from this repository. The results and their discussion are in
 | `dem_metrics.py` | coordination number and convexity per dump → `.npz` |
 | `dem_summary.py` | tables, TCCA − FLAGE differences and the figure `docs/figs/dem_compare.pdf` |
 | `metrics_flage.npz`, `metrics_tcca.npz` | metrics of the 2 × 500 runs of 2026-11-26 to 2026-11-28 |
+| `dem_shape.py`, `dem_shape_summary.py` | shape descriptors (Rg, gyration tensor, projected area, S(q)) and coordinates of the first and last dumps |
+| `shape_flage.npz`, `shape_tcca.npz` | their output for the 2 × 500 runs |
+| `step2_generate.py`, `step2b_generate.py` | restructured aggregates and generator aggregates (TCCA, PTSA) matched in N and Rg_F, or with smaller Rg_F for matching d_mob |
+| `step2_mstm.jl`, `step2_order_check.jl` | optics with MSTMforCAS.jl and its convergence in the truncation order |
+| `step2_mobility.py` | mobility (external module, see its docstring) and structure descriptors |
+| `step2_summary.py`, `step2b_summary.py` | comparison at equal Rg_F and at equal d_mob |
+| `step2*_aggregates.h5`, `step2*_optics.csv`, `step2*_mobility.csv`, `step2_order_check.csv` | inputs and results of step 2 |
 
 ## Prerequisites
 
@@ -61,3 +68,30 @@ about 0.8 MB, so a work directory needs about 0.5 GB.
 
 The runs are chaotic. Results change with the compiler and the number of OpenMP threads, so
 only statistics over the 50 aggregates can be compared. `run_one.sh` uses one thread per run.
+
+## Comparison with generator aggregates (optics and mobility)
+
+The restructured aggregates are compared with TCCA and PTSA aggregates of the same N = 150,
+first at equal Rg_F and then at equal mobility diameter. Monomer radius 15 nm; wavelengths
+0.453, 0.638 and 0.834 µm; refractive indices 1.75 + 0.60i and 1.95 + 0.79i.
+
+```bash
+uv run python analysis/dem/step2_generate.py analysis/dem/step2_aggregates.h5 50
+uv run python analysis/dem/step2b_generate.py analysis/dem/step2b_aggregates.h5 30
+# on the compute host (MSTMforCAS.jl v1.2.1; mobility needs numpy, scipy, h5py)
+julia -t 20 --project=PATH/TO/MSTMforCAS.jl analysis/dem/step2_mstm.jl step2_aggregates.h5 step2_optics.csv
+python analysis/dem/step2_mobility.py step2_aggregates.h5 MOBILITY_MODULE.py step2_mobility.csv 20
+# (same two commands for step2b_aggregates.h5)
+python analysis/dem/step2_summary.py analysis/dem/step2_optics.csv analysis/dem/step2_mobility.csv docs/figs/dem_step2.pdf
+python analysis/dem/step2b_summary.py analysis/dem/step2_optics.csv analysis/dem/step2_mobility.csv \
+    analysis/dem/step2b_optics.csv analysis/dem/step2b_mobility.csv
+```
+
+`step2_mstm.jl` centres every aggregate before the calculation. The phase of the forward
+amplitude returned by MSTMforCAS.jl changes by exp(ik z0) when the aggregate is translated by
+z0 along the incident direction. The efficiencies change by less than 0.2 %.
+
+Result: at necking fractions up to 50 % no generator class reproduces the restructured
+aggregates. Matched in Rg_F or in d_mob, the generator aggregates absorb 7–12 % less, because
+their coordination number stays near 2. With all necks intact, generator aggregates matched in
+d_mob agree within about 3 % in all quantities, except Q_sca at 0.834 µm (up to 8 %).
