@@ -7,9 +7,13 @@ d_mob, PA, R_S and the optical quantities are interpolated linearly in Rg_F to t
 which d_mob equals that of the restructured class R/flage/f.  The table lists the % difference
 of the interpolated generator values from the restructured ones.
 
+With mobility CSVs from step2_harmonic.py, the option --harmonic matches d_mob_H instead of
+d_mob.  d_mob_H uses the harmonic mean of the free molecular friction with f_A/f_H from the
+equivalent ellipsoid, which overestimates f_A/f_H of open aggregates; the result is a bound.
+
 Usage (from the repository root):
     python analysis/dem/step2b_summary.py step2_optics.csv step2_mobility.csv \
-        step2b_optics.csv step2b_mobility.csv
+        step2b_optics.csv step2b_mobility.csv [--harmonic]
 """
 import sys
 
@@ -23,9 +27,20 @@ SERIES = [("ptsa", 2.6), ("ptsa", 2.2), ("tcca", 2.2)]
 COND = [(0.453, 1.95, 0.79), (0.638, 1.95, 0.79), (0.834, 1.95, 0.79), (0.638, 1.75, 0.60)]
 
 
-def main(opt_a, mob_a, opt_b, mob_b):
+def main(opt_a, mob_a, opt_b, mob_b, *opts):
+    dkey = "d_mob_H_um" if "--harmonic" in opts else "d_mob_um"
     ref = collect(read_csv(opt_a), read_csv(mob_a))
     gen = collect(read_csv(opt_b), read_csv(mob_b))
+    for d in (ref, gen):  # collect() keeps a fixed set of mobility columns; add the chosen one
+        for name in d:
+            d[name]["d_sel"] = None
+    for path, d in ((mob_a, ref), (mob_b, gen)):
+        tmp = {}
+        for r in read_csv(path):
+            tmp.setdefault(r["class"], []).append(float(r[dkey]))
+        for name, v in tmp.items():
+            d[name]["d_sel"] = np.array(v)
+    print(f"mobility diameter used for matching: {dkey}")
     keys = ["PA_um2", "R_S_um", "coord_005"]
     labels = ["PA", "R_S", "coord"]
     for wl, mr, mi in COND:
@@ -36,7 +51,7 @@ def main(opt_a, mob_a, opt_b, mob_b):
           "% difference from restructured (coord: generator value)")
     for f in FRACS:
         r = ref[f"R/flage/{f}"]
-        d0 = r["d_mob_um"].mean()
+        d0 = r["d_sel"].mean()
         print(f"\n--- R/flage/{f}: d_mob = {d0:.4f} um, Rg_F/a = {r['rgf'].mean():.3f}, "
               f"coord = {r['coord_005'].mean():.2f} ---")
         print(f"{'series':12s} {'Rg_F*':>6s} " + " ".join(f"{lab:>14s}" for lab in labels))
@@ -44,7 +59,7 @@ def main(opt_a, mob_a, opt_b, mob_b):
             names = sorted((n for n in gen if n.startswith(f"M/{meth}/{Df:.1f}/")),
                            key=lambda n: float(n.split("/")[-1]))
             rg = np.array([gen[n]["rgf"].mean() for n in names])
-            dm = np.array([gen[n]["d_mob_um"].mean() for n in names])
+            dm = np.array([gen[n]["d_sel"].mean() for n in names])
             if not (dm.min() <= d0 <= dm.max()):
                 print(f"{meth}/{Df:.1f}    d_mob {d0:.4f} outside the generated range "
                       f"[{dm.min():.4f}, {dm.max():.4f}]")

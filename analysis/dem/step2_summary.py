@@ -2,7 +2,11 @@
 """
 Compare restructured aggregates with generator aggregates of the same N and Rg_F.
 
-Reads the outputs of step2_mstm.jl (optics) and step2_mobility.py (mobility, structure).
+Reads the outputs of step2_mstm.jl (optics) and step2_mobility.py (mobility, structure),
+optionally augmented by step2_harmonic.py.  d_mob(A) uses the arithmetic orientational mean of
+the free molecular friction (the main result).  d_mob(Hell) uses the harmonic mean with f_A/f_H
+from the equivalent ellipsoid, which overestimates f_A/f_H of open aggregates
+(step2_pa_tensor.py); it is a bound, not a correction.  The figure uses d_mob(A).
 For each target necking fraction f, every class is compared with the restructured class
 R/flage/f: relative difference of the class means in % and z = difference / standard error.
 
@@ -32,8 +36,10 @@ def collect(optics, mobility):
     """Return {class: {quantity: array over aggregates}}."""
     data = defaultdict(lambda: defaultdict(list))
     for r in mobility:
-        for k in ("rgf", "R_S_um", "PA_um2", "d_mob_um", "coord_005", "conv3", "ax_l1l3"):
-            data[r["class"]][k].append(float(r[k]))
+        for k in ("rgf", "R_S_um", "PA_um2", "d_mob_um", "coord_005", "conv3", "ax_l1l3",
+                  "d_mob_H_um", "fa_fh"):
+            if k in r:  # d_mob_H_um, fa_fh: only after step2_harmonic.py
+                data[r["class"]][k].append(float(r[k]))
     for r in optics:
         tag = f"{float(r['wavelength_um']):.3f}_{float(r['m_re']):.2f}_{float(r['m_im']):.2f}"
         c = data[r["class"]]
@@ -53,7 +59,8 @@ def mse(v):
 def table(data):
     tag0 = f"{WL0:.3f}_{M0[0]:.2f}_{M0[1]:.2f}"
     cols = [("coord_005", "coord", "abs"), ("conv3", "conv3", "abs"), ("ax_l1l3", "ax13", "abs"),
-            ("R_S_um", "R_S", "rel"), ("PA_um2", "PA", "rel"), ("d_mob_um", "d_mob", "rel"),
+            ("R_S_um", "R_S", "rel"), ("PA_um2", "PA", "rel"), ("d_mob_um", "d_mob(A)", "rel"),
+            ("d_mob_H_um", "d_mob(Hell)", "rel"),
             (f"Qabs_{tag0}", "Q_abs", "rel"), (f"Qsca_{tag0}", "Q_sca", "rel"),
             (f"Qext_{tag0}", "Q_ext", "rel"), (f"ImS_{tag0}", "|Im S(0)|", "rel")]
     print(f"Optics at lambda = {WL0} um, m = {M0[0]} + {M0[1]}i; a = 15 nm, N = 150")
@@ -71,6 +78,9 @@ def table(data):
             d = data[name]
             out = []
             for key, _, kind in cols:
+                if key not in d:
+                    out.append("-")
+                    continue
                 m, e = mse(d[key])
                 if kind == "abs":
                     out.append(f"{m:.3f}")

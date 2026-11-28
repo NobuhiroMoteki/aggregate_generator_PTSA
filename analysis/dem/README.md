@@ -18,6 +18,8 @@ from this repository. The results and their discussion are in
 | `step2_generate.py`, `step2b_generate.py` | restructured aggregates and generator aggregates (TCCA, PTSA) matched in N and Rg_F, or with smaller Rg_F for matching d_mob |
 | `step2_mstm.jl`, `step2_order_check.jl` | optics with MSTMforCAS.jl and its convergence in the truncation order |
 | `step2_mobility.py` | mobility (external module, see its docstring) and structure descriptors |
+| `step2_harmonic.py` | bound on the harmonic orientational mean of the free molecular friction (ellipsoid; external module) |
+| `step2_pa_tensor.py` | check of the ellipsoid f_A/f_H against a projected-area tensor |
 | `step2_summary.py`, `step2b_summary.py` | comparison at equal Rg_F and at equal d_mob |
 | `step2*_aggregates.h5`, `step2*_optics.csv`, `step2*_mobility.csv`, `step2_order_check.csv` | inputs and results of step 2 |
 
@@ -81,17 +83,29 @@ uv run python analysis/dem/step2b_generate.py analysis/dem/step2b_aggregates.h5 
 # on the compute host (MSTMforCAS.jl v1.2.1; mobility needs numpy, scipy, h5py)
 julia -t 20 --project=PATH/TO/MSTMforCAS.jl analysis/dem/step2_mstm.jl step2_aggregates.h5 step2_optics.csv
 python analysis/dem/step2_mobility.py step2_aggregates.h5 MOBILITY_MODULE.py step2_mobility.csv 20
-# (same two commands for step2b_aggregates.h5)
+# ellipsoid bound on the harmonic orientational mean (adds d_mob_H_um); check: step2_pa_tensor.py
+python analysis/dem/step2_harmonic.py step2_aggregates.h5 step2_mobility.csv ANISOTROPY_MODULE.py \
+    MOBILITY_MODULE.py step2_mobility.csv
+# (same commands for step2b_aggregates.h5)
 python analysis/dem/step2_summary.py analysis/dem/step2_optics.csv analysis/dem/step2_mobility.csv docs/figs/dem_step2.pdf
 python analysis/dem/step2b_summary.py analysis/dem/step2_optics.csv analysis/dem/step2_mobility.csv \
-    analysis/dem/step2b_optics.csv analysis/dem/step2b_mobility.csv
+    analysis/dem/step2b_optics.csv analysis/dem/step2b_mobility.csv   # add --harmonic for the bound
 ```
 
-`step2_mstm.jl` centres every aggregate before the calculation. The phase of the forward
-amplitude returned by MSTMforCAS.jl changes by exp(ik z0) when the aggregate is translated by
-z0 along the incident direction. The efficiencies change by less than 0.2 %.
+A DMA measures the mean of the mobility, i.e. the harmonic orientational mean of the friction.
+R_S corresponds to it, but the adjusted-sphere expression with ⟨PA⟩ uses the arithmetic mean of
+the free molecular friction. The main results use this expression, d_mob(A), as is usual for
+aggregates. `step2_harmonic.py` adds d_mob(H) with PA replaced by PA·f_H/f_A, where f_A/f_H comes
+from the ellipsoid of the same gyration tensor. The ellipsoid treats the aggregate as a solid
+convex body and overestimates f_A/f_H − 1 of open aggregates: 12–19 % against 2–6 % from a
+projected-area tensor that includes the shielding between monomers (`step2_pa_tensor.py`).
+d_mob(H) is therefore a bound on the effect (−3.7 to −5.2 % for the restructured aggregates),
+not a correction. The exact value needs the free molecular friction tensor of the aggregate.
 
-Result: at necking fractions up to 50 % no generator class reproduces the restructured
-aggregates. Matched in Rg_F or in d_mob, the generator aggregates absorb 7–12 % less, because
-their coordination number stays near 2. With all necks intact, generator aggregates matched in
-d_mob agree within about 3 % in all quantities, except Q_sca at 0.834 µm (up to 8 %).
+Result (d_mob(A)): at necking fractions up to 50 % no generator class reproduces the
+restructured aggregates. Matched in Rg_F or in d_mob, the generator aggregates absorb 7–12 % less,
+because their coordination number stays near 2. With all necks intact, generator aggregates
+matched in d_mob agree within about 3 % in all quantities, except Q_sca at 0.834 µm (up to 8 %).
+With the ellipsoid bound d_mob(H) the conclusion for necking fractions up to 50 % is unchanged
+(absorption −6 to −10 %, scattering up to +28 %); with all necks intact only TCCA (Df = 2.2)
+stays within 3.5 %, except Q_sca (6.4 %).
