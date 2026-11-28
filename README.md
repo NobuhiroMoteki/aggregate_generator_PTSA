@@ -4,11 +4,19 @@
 
 ## 📌 Description
 
+This repository generates fractal-like aggregates of spheres as input to light-scattering and mobility calculations. It provides two generators. The polydisperse tunable sequential aggregation (PTSA) is the default. Tunable cluster-cluster aggregation (CCA) is an option. The repository also holds analyses of soot restructuring with a discrete element method (`analysis/dem/`, `docs/restructuring_review.pdf`). Restructuring is not yet a generator option. These analyses run the external code [soot-dem](https://github.com/egor-demidov/soot-dem).
+
+The name comes from the first implementation, PTSA. It is kept because manuscripts cite the repository under this name.
+
+### PTSA
+
 A Python code for the polydisperse tunable sequential aggregation (PTSA) algorithm. Monomer positions are sequentially determined by a particle-cluster stochastic aggregation algorithm so as to satisfy the fractal scaling law, surface-attachment condition, and non-overlapping condition. The monomer position is arbitrary, not being restricted to a gridded lattice space. A notable advantage of this PTSA algorithm is its capability of generating compact fractal-like aggregates with high Df (up to 2.95), where the conventional cluster-cluster aggregation (CCA) algorithm will easily break down.
 
-As an option, the same pipeline can generate aggregates by **tunable cluster-cluster aggregation (CCA)** (Filippov et al., 2000), translated to Python/Numba from the C++ code [nmoteki/aggregate_generator](https://github.com/nmoteki/aggregate_generator). PTSA and CCA give aggregates with the same (k, Df) and the same radius of gyration, but their internal geometry differs (see [Choosing the algorithm](#choosing-the-algorithm---method)). Generating both covers both possibilities.
+The inner search loop of PTSA is accelerated by JIT compilation via [Numba](https://numba.pydata.org/) and an early-exit scalar overlap check, achieving a **2.8–3.5× speedup** over a naive vectorized implementation.
 
-The inner search loop is accelerated by JIT compilation via [Numba](https://numba.pydata.org/) and an early-exit scalar overlap check, achieving a **2.8–3.5× speedup** over a naive vectorized implementation.
+### Tunable CCA
+
+As an option, the same pipeline can generate aggregates by **tunable cluster-cluster aggregation (CCA)** (Filippov et al., 2000), translated to Python/Numba from the C++ code [nmoteki/aggregate_generator](https://github.com/nmoteki/aggregate_generator). PTSA and CCA give aggregates with the same (k, Df) and the same radius of gyration, but their internal geometry differs (see [Choosing the algorithm](#choosing-the-algorithm---method)). Generating both covers both possibilities.
 
 ### Main Features
 
@@ -303,8 +311,8 @@ Positions are measured from the centroid of the aggregate.
 | `export_ptsa_from_hdf5.py` | Export one aggregate from HDF5 to `.ptsa` format (CLI script) |
 | `analysis/correlation_compare.py`, `analysis/plot_correlation.py` | Two-point correlation function of PTSA, TCCA and SA aggregates (results in `docs/theory_note.pdf`) |
 | `docs/theory_note.tex` | Theory note on both algorithms (build: `latexmk -pdf docs/theory_note.tex`) |
-| `analysis/dem/` | DEM restructuring runs with soot-dem (Demidov et al., 2024): reproduction of the paper and the same runs with TCCA aggregates (see `analysis/dem/README.md`) |
-| `docs/restructuring_review.tex` | Reading note on physics-based soot restructuring by water, with the soot-dem reproduction |
+| `analysis/dem/` | DEM restructuring runs with soot-dem (Demidov et al., 2024): reproduction of the paper, the same runs with TCCA aggregates, shape descriptors, and optics and mobility compared with generator aggregates (see `analysis/dem/README.md`) |
+| `docs/restructuring_review.tex` | Reading note on physics-based soot restructuring by water, with the soot-dem reproduction and the shape, optics and mobility of the restructured aggregates |
 | `tests/validate_tcca.py` | Validation of `tcca` (geometry, fractal law, C++ formulas, reproducibility): `python tests/validate_tcca.py` |
 
 ---
