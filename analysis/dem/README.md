@@ -4,6 +4,8 @@ These scripts reproduce the restructuring simulations of Demidov, Gor and Khaliz
 *Phys. Rev. E* **110**, 054902 (2024), Fig. 8. They also repeat the runs with TCCA aggregates
 from this repository. The results and their discussion are in
 [docs/restructuring_review.pdf](../../docs/restructuring_review.pdf), Sec. "Reproduction".
+The shape descriptors (step 1) and the comparison of optics and mobility with generator aggregates
+(step 2) are in Sec. "Shape, optics and mobility of the restructured aggregates" of the same note.
 
 | File | Purpose |
 | --- | --- |

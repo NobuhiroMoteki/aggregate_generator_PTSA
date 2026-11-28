@@ -31,6 +31,9 @@ The fraction of intact necks is prescribed, yet it controls the outcome.
 A physics-based water process therefore needs three additions: a capillary bridge force derived from the meniscus, a liquid distribution from condensation and evaporation, and a neck fracture criterion.
 We reproduced the restructuring results of the paper with the public code and its input files.
 Aggregates from the tunable cluster-cluster aggregation of this repository give the same restructured morphology within the statistical uncertainty.
+The restructured aggregates are locally compact and globally open.
+Generator aggregates with the same number of monomers and the same mobility diameter underestimate their absorption by 5 to 10\,\% when half of the necks or fewer are intact.
+Restructured aggregates therefore cannot be replaced by generator aggregates with adjusted fractal parameters.
 \end{abstract}
 
 %======================================================================
@@ -365,6 +368,343 @@ The TCCA aggregates of this repository can thus serve as input for the later sta
 Whether this holds for PTSA aggregates, polydisperse monomers and larger $N$ has not been tested.
 
 %======================================================================
+\section{Shape, optics and mobility of the restructured aggregates}
+\label{sec:shape-optics}
+
+The aggregates of this repository serve as input to optical and mobility calculations.
+This section asks whether restructured aggregates can be replaced by generator aggregates with adjusted $\Df$ and $k_\text{f}$.
+It uses the terminal aggregates of the runs of Sec.~\ref{sec:repro}.
+Step~1 describes their shape (Sec.~\ref{sec:shape}).
+Step~2 compares their optics and mobility with those of generator aggregates (Sec.~\ref{sec:step2}).
+The scripts and results are in \texttt{analysis/dem/}.
+
+\subsection{Conventions}
+\label{sec:conventions}
+
+The radius of gyration in this section includes the self term of the monomers,
+\begin{equation}
+  R_{g,\text{F}}^2 = \frac{1}{N}\sum_{i=1}^{N} \lvert \bm{r}_i - \bar{\bm{r}} \rvert^2 + a^2 ,
+  \label{eq:rgf}
+\end{equation}
+where $a$ is the monomer radius.
+This is the convention of the TCCA placement law.
+Section~\ref{sec:repro} quotes the radius of gyration of the centres alone.
+For example, its value $13.12\,r$ for the published aggregates corresponds to $R_{g,\text{F}} = 13.16\,a$.
+
+The coordination number in Table~\ref{tab:repro} counts neighbours with a surface gap below $0.02\,a$.
+Step~2 uses a gap below $0.05\,a$.
+PTSA leaves gaps up to about $0.04\,a$ by design, and the smaller threshold would miss these contacts.
+
+The DEM runs use $a = \SI{14}{\nano\meter}$.
+For the optics and the mobility the coordinates are scaled to $a = \SI{15}{\nano\meter}$.
+The DEM forces depend on size, so this reuses the shape only.
+Some restructured aggregates have monomer overlaps beyond $10^{-3}\,a$.
+They were scaled uniformly about their centroid until the smallest centre distance is $2a$.
+This affected 3 and 4 of the 50 published aggregates at 50 and \SI{100}{\percent} necks and 2 of the TCCA aggregates at \SI{100}{\percent} necks.
+The scaling removes some contacts.
+At \SI{50}{\percent} necks the mean coordination number for a gap below $0.02\,a$ drops from 3.899 to 3.745.
+
+\subsection{Step 1: shape descriptors}
+\label{sec:shape}
+
+Table~\ref{tab:shape} and Fig.~\ref{fig:dem-shape} give the shape descriptors at \SI{49}{\nano\second}.
+The projected area $\langle\text{PA}\rangle$ is averaged over 64 directions of a Fibonacci lattice.
+It is the area of the union of the projected discs on a pixel grid.
+The elongation is $\sqrt{\lambda_1/\lambda_3}$, where $\lambda_1 \ge \lambda_2 \ge \lambda_3$ are the eigenvalues of the gyration tensor of the centres.
+The structure factor of the centres is
+\begin{equation}
+  S(q) = 1 + \frac{2}{N}\sum_{i<j} \frac{\sin(q r_{ij})}{q r_{ij}} ,
+  \label{eq:debye}
+\end{equation}
+with $r_{ij}$ the distance between the centres of monomers $i$ and $j$.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Shape descriptors of the restructured aggregates at \SI{49}{\nano\second} ($N = 150$).
+  Means over 50 aggregates with 95\,\% confidence intervals.
+  Drift is the relative change of $R_{g,\text{F}}$ from 39 to \SI{49}{\nano\second}.}
+  \label{tab:shape}
+  \small
+  \begin{tabular}{rcccccc}
+    \toprule
+    & \multicolumn{2}{c}{$R_{g,\text{F}}/a$} & \multicolumn{2}{c}{$\langle\text{PA}\rangle/(N\pi a^2)$} & $\sqrt{\lambda_1/\lambda_3}$ & Drift (\%) \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-6}\cmidrule(lr){7-7}
+    Necks (\%) & FLAGE & TCCA & FLAGE & TCCA & FLAGE & FLAGE \\
+    \midrule
+    initial & $13.16 \pm 0.02$ & 13.42 & $0.610 \pm 0.001$ & 0.616 & $3.69 \pm 0.06$ & -- \\
+    0   & $10.36 \pm 0.36$ & $10.43 \pm 0.40$ & $0.438 \pm 0.006$ & $0.443 \pm 0.006$ & $4.70 \pm 0.35$ & $-0.7 \pm 1.3$ \\
+    15  & $10.25 \pm 0.34$ & $10.26 \pm 0.40$ & $0.444 \pm 0.005$ & $0.443 \pm 0.007$ & $4.33 \pm 0.36$ & $-0.04 \pm 0.09$ \\
+    30  & $10.01 \pm 0.38$ & $10.07 \pm 0.38$ & $0.448 \pm 0.007$ & $0.447 \pm 0.007$ & $4.08 \pm 0.34$ & $-1.0 \pm 0.9$ \\
+    50  & $10.09 \pm 0.36$ & $10.29 \pm 0.34$ & $0.463 \pm 0.006$ & $0.466 \pm 0.006$ & $4.10 \pm 0.31$ & $-0.4 \pm 0.4$ \\
+    70  & $10.21 \pm 0.34$ & $10.45 \pm 0.36$ & $0.487 \pm 0.007$ & $0.489 \pm 0.006$ & $3.54 \pm 0.26$ & $-1.1 \pm 0.7$ \\
+    80  & $10.37 \pm 0.32$ & $10.61 \pm 0.30$ & $0.506 \pm 0.006$ & $0.508 \pm 0.005$ & $3.55 \pm 0.25$ & $-1.2 \pm 0.7$ \\
+    90  & $10.70 \pm 0.36$ & $11.05 \pm 0.34$ & $0.530 \pm 0.006$ & $0.532 \pm 0.006$ & $3.48 \pm 0.34$ & $-2.1 \pm 0.8$ \\
+    95  & $11.13 \pm 0.32$ & $11.11 \pm 0.33$ & $0.548 \pm 0.007$ & $0.547 \pm 0.007$ & $3.52 \pm 0.25$ & $-1.3 \pm 0.4$ \\
+    98  & $11.21 \pm 0.29$ & $11.38 \pm 0.27$ & $0.558 \pm 0.006$ & $0.560 \pm 0.004$ & $3.36 \pm 0.23$ & $-1.9 \pm 0.6$ \\
+    100 & $11.45 \pm 0.28$ & $11.60 \pm 0.28$ & $0.567 \pm 0.006$ & $0.570 \pm 0.004$ & $3.38 \pm 0.21$ & $-1.8 \pm 0.5$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{dem_shape.pdf}
+  \caption{Shape of the restructured aggregates.
+  (a) Radius of gyration $R_{g,\text{F}}$ against time for the published aggregates at selected necking fractions (mean over 50 aggregates).
+  (b) Structure factor of the centres, Eq.~\eqref{eq:debye}, at \SI{49}{\nano\second} for the published aggregates (mean over 50 aggregates).
+  The dashed line is the initial state ($\Df = 1.8$).
+  (c) Orientation-averaged projected area at \SI{49}{\nano\second} against necking fraction for the FLAGE and TCCA aggregates, with 95\,\% confidence intervals.
+  The dotted lines are the initial values.}
+  \label{fig:dem-shape}
+\end{figure}
+
+The results are as follows.
+\begin{itemize}
+  \item $R_{g,\text{F}}$ drops by 13 to \SI{24}{\percent}.
+        Between 0 and \SI{80}{\percent} necks the values lie between $10.0\,a$ and $10.4\,a$, and their confidence intervals overlap.
+        Above \SI{80}{\percent} necks $R_{g,\text{F}}$ rises towards the initial value.
+  \item $R_{g,\text{F}}$ still decreases at \SI{49}{\nano\second}.
+        Over the last \SI{10}{\nano\second} it changes by up to $-2.1$\,\% on average, most at high necking fractions (Fig.~\ref{fig:dem-shape}(a)).
+        The terminal values are therefore not converged.
+        The three-dimensional convexity also still grows (Sec.~\ref{sec:repro}).
+  \item The projected area falls monotonically with fewer necks, from 0.610 to 0.438 of $N\pi a^2$.
+        It follows the coordination number more closely than $R_{g,\text{F}}$ does, because contacts make monomers shade each other.
+  \item The elongation $\sqrt{\lambda_1/\lambda_3}$ increases from 3.69 to 4.70 without necks.
+        With \SI{70}{\percent} necks or more it stays near 3.4--3.6.
+  \item At large $q$ the structure factor of the restructured aggregates has a deeper minimum and a steeper rise towards the contact peak (Fig.~\ref{fig:dem-shape}(b)).
+        This shows more neighbours at contact distance.
+        At intermediate $q$ the curves stay close to the initial one.
+  \item The TCCA aggregates agree with the FLAGE aggregates within the confidence intervals in all descriptors.
+\end{itemize}
+
+The restructured aggregates are thus locally compact and globally open.
+Without necks the coordination number more than doubles (4.85 against 2.11), while $R_{g,\text{F}}$ drops by \SI{21}{\percent} and the convexity stays near 0.3.
+
+A fractal dimension cannot be assigned at $N = 150$.
+All aggregates have the same $N$, and one $R_{g,\text{F}}$ fixes only the curve $k_\text{f} = N/(R_{g,\text{F}}/a)^{\Df}$.
+For example, $R_{g,\text{F}} = 10.36\,a$ without necks corresponds to $(\Df, k_\text{f}) = (1.8, 2.34)$, $(2.0, 1.48)$, $(2.2, 0.94)$ or $(2.6, 0.38)$.
+The slope of $S(q)$ gives 1.63--2.07 for the restructured aggregates and 1.89 for the initial ones with prescribed $\Df = 1.8$.
+The range of the power law is less than one decade at this $N$, so we use the slope as a diagnostic only.
+
+\subsection{Step 2: optics and mobility compared with generator aggregates}
+\label{sec:step2}
+
+\paragraph{Aggregate classes.}
+The restructured classes hold the 50 terminal aggregates at 0, 50 and \SI{100}{\percent} necks for both input sets.
+The generator classes hold 50 aggregates each from the TCCA and PTSA of this repository with $N = 150$ monomers of equal radius.
+Their $k_\text{f}$ is chosen so that $R_{g,\text{F}}$ equals the class mean of the restructured FLAGE aggregates at the same necking fraction.
+They span $\Df = 2.0$ to 2.6.
+TCCA failed for all 50 seeds at $\Df = 2.6$ and at $\Df = 2.4$ with \SI{100}{\percent} necks ($k_\text{f} \le 0.43$).
+PTSA succeeded in all classes.
+A second set matches the mobility diameter instead of $R_{g,\text{F}}$.
+It holds compact series of 30 aggregates at $R_{g,\text{F}}/a = 6.5$ to 11 for PTSA with $\Df = 2.6$ and 2.2 and for TCCA with $\Df = 2.2$.
+TCCA failed for $R_{g,\text{F}}/a \le 8.0$ ($k_\text{f} \ge 1.55$).
+
+\paragraph{Optics.}
+We used MSTMforCAS.jl v1.2.1, a Julia implementation of the multiple-sphere T-matrix method~\cite{mackowski2011}.
+The vacuum wavelengths are 0.453, 0.638 and \SI{0.834}{\micro\meter}, and the refractive indices are $1.75 + 0.60\mathrm{i}$ and $1.95 + 0.79\mathrm{i}$.
+Each aggregate is centred at the origin, because the phase of the forward amplitude $S(0)$ depends on the origin.
+Each aggregate gets one random orientation, so the class means average over orientation.
+The truncation order is chosen per wavelength and refractive index so that touching pairs are resolved.
+Raising it by 3 changes $Q_\text{abs}$ by 0.4 to \SI{0.9}{\percent} and $Q_\text{sca}$ by less than \SI{0.4}{\percent} at \SI{0.638}{\micro\meter} and $m = 1.95 + 0.79\mathrm{i}$.
+The change is larger for the restructured aggregates.
+It shifts the differences between restructured and generator classes by at most \SI{0.5}{\percent}.
+In the convention of MSTMforCAS.jl the real part of $S(0)$ is proportional to $Q_\text{ext}$.
+We therefore list $Q_\text{ext}$ and $\lvert\operatorname{Im} S(0)\rvert$.
+
+\paragraph{Mobility.}
+The mobility diameter follows the adjusted-sphere method of Dahneke~\cite{dahneke1973a,dahneke1973c} in the form of Zhang et al.~\cite{zhang2012}.
+The continuum size is the Smoluchowski radius $R_\text{S}$.
+It is the capacitance of the union of spheres and approximates the hydrodynamic radius~\cite{hubbard1993}.
+We computed it by walk-on-spheres with $2 \times 10^4$ walks.
+The free molecular size is $\langle\text{PA}\rangle$ from 64 directions.
+With the Knudsen number $\mathit{Kn} = \lambda \pi R_\text{S} / \langle\text{PA}\rangle$, the friction coefficient is
+\begin{equation}
+  f = \frac{6\pi\mu R_\text{S}}{C(\mathit{Kn})} , \qquad
+  C(\mathit{Kn}) = 1 + \mathit{Kn}\left[A + B \exp\left(-\frac{C'}{\mathit{Kn}}\right)\right] ,
+  \label{eq:adjusted-sphere}
+\end{equation}
+where $\mu$ is the gas viscosity and $A = 1.257$, $B = 0.400$, $C' = 1.100$.
+The mobility diameter $d_\text{mob}$ is the diameter of the sphere with the same friction, $3\pi\mu d_\text{mob} / C(2\lambda/d_\text{mob}) = f$.
+We used air at \SI{296.15}{\kelvin} and \SI{101.3}{\kilo\pascal} with $\lambda = \SI{0.0673}{\micro\meter}$.
+The aggregates have $d_\text{mob} = 0.25$ to \SI{0.31}{\micro\meter} and $\mathit{Kn} = 0.54$ to 0.61.
+
+\paragraph{Equal $N$ and $R_{g,\text{F}}$.}
+Figure~\ref{fig:dem-step2} and Table~\ref{tab:equal-rg} compare the generator classes with the restructured FLAGE classes.
+\begin{itemize}
+  \item Without necks the generator aggregates have a 12 to \SI{18}{\percent} larger $d_\text{mob}$, a 25 to \SI{36}{\percent} larger $\langle\text{PA}\rangle$ and a 10 to \SI{12}{\percent} smaller $Q_\text{abs}$.
+        The differences shrink with more necks.
+        At \SI{100}{\percent} necks they are 3 to \SI{5}{\percent} in $d_\text{mob}$ and 2 to \SI{3}{\percent} in $Q_\text{abs}$.
+  \item $Q_\text{sca}$ of the generator aggregates is smaller by 24 to \SI{29}{\percent} without necks and by 9 to \SI{12}{\percent} at \SI{100}{\percent} necks.
+        $\lvert\operatorname{Im} S(0)\rvert$ differs by at most \SI{2.1}{\percent}.
+  \item The coordination number of the generator aggregates is 2.0 to 2.1 in all classes.
+        The restructured aggregates have 5.1, 4.1 and 2.3 at 0, 50 and \SI{100}{\percent} necks.
+        The deficit in $Q_\text{abs}$ follows this difference.
+        Without necks $Q_\text{abs}$ of the restructured aggregates is \SI{13}{\percent} above that of the initial aggregates (1.143 against 1.013).
+  \item At equal $R_{g,\text{F}}$ the PTSA results hardly depend on $\Df$.
+        For TCCA $d_\text{mob}$, $\langle\text{PA}\rangle$ and $R_\text{S}$ increase with $\Df$.
+  \item The restructured TCCA aggregates agree with the restructured FLAGE aggregates within \SI{1.2}{\percent} in all quantities except $Q_\text{sca}$.
+        Their $Q_\text{sca}$ is lower by 2 to \SI{4}{\percent} (at most 1.3 standard errors).
+\end{itemize}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Generator aggregates at equal $N$ and $R_{g,\text{F}}$: range over the generator classes ($\Df = 2.0$--2.6, TCCA and PTSA) of the difference from the restructured FLAGE class in \%.
+  Wavelength \SI{0.638}{\micro\meter}, $m = 1.95 + 0.79\mathrm{i}$, 50 aggregates per class.}
+  \label{tab:equal-rg}
+  \footnotesize
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{rcccccc}
+    \toprule
+    Necks (\%) & $d_\text{mob}$ & $\langle\text{PA}\rangle$ & $R_\text{S}$ & $Q_\text{abs}$ & $Q_\text{sca}$ & $\lvert\operatorname{Im} S(0)\rvert$ \\
+    \midrule
+    0   & $+12.5$--$+18.1$ & $+25.3$--$+35.8$ & $+12.3$--$+18.9$ & $-12.3$--$-10.5$ & $-29.2$--$-24.4$ & $+1.5$--$+2.1$ \\
+    50  & $+7.6$--$+13.6$ & $+15.4$--$+26.5$ & $+7.2$--$+14.3$ & $-9.7$--$-8.0$ & $-21.5$--$-15.5$ & $+0.6$--$+1.2$ \\
+    100 & $+2.7$--$+5.0$ & $+4.8$--$+8.4$ & $+2.9$--$+5.7$ & $-3.4$--$-1.6$ & $-11.9$--$-9.2$ & $+0.1$--$+0.3$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{dem_step2.pdf}
+  \caption{Generator aggregates with the same $N$ and $R_{g,\text{F}}$ as the restructured FLAGE aggregates, against the $\Df$ of the generator.
+  Rows: 0, 50 and \SI{100}{\percent} necks.
+  Columns: $d_\text{mob}$, $\langle\text{PA}\rangle$, $R_\text{S}$, $Q_\text{abs}$ and $Q_\text{sca}$ relative to the restructured class, and the coordination number (surface gap below $0.05\,a$).
+  Optics at \SI{0.638}{\micro\meter} with $m = 1.95 + 0.79\mathrm{i}$.
+  The blue line and band show the restructured class with its 95\,\% confidence interval.
+  Error bars are 95\,\% confidence intervals.}
+  \label{fig:dem-step2}
+\end{figure}
+
+\paragraph{Equal $N$ and $d_\text{mob}$.}
+For each compact series the class means are interpolated linearly in $R_{g,\text{F}}$ to the $d_\text{mob}$ of the restructured class.
+Table~\ref{tab:equal-dmob} lists the result.
+The interpolation carries no error estimate.
+\begin{itemize}
+  \item The generator aggregates reach the $d_\text{mob}$ of the restructured aggregates at $R_{g,\text{F}}/a = 7.1$ to 7.5 without necks and at \SI{50}{\percent} necks.
+        These are much smaller than the 10.1 to 10.4 of the restructured aggregates.
+        The TCCA series with $\Df = 2.2$ does not reach these values.
+  \item At 0 and \SI{50}{\percent} necks $Q_\text{abs}$ is still lower by 5 to \SI{10}{\percent} for all four optical conditions.
+        $Q_\text{sca}$ is higher by 10 to \SI{16}{\percent} at 0.638 and \SI{0.834}{\micro\meter}, and lower by about \SI{3}{\percent} at \SI{0.453}{\micro\meter}.
+        $\lvert\operatorname{Im} S(0)\rvert$ agrees within \SI{1.3}{\percent}.
+        The coordination number of the generator aggregates stays at 2.1.
+  \item At \SI{100}{\percent} necks $Q_\text{abs}$ differs by 1.6 to \SI{2.8}{\percent} and $Q_\text{sca}$ by at most \SI{8}{\percent} (at \SI{0.834}{\micro\meter}).
+        Without an error estimate these differences are not significant.
+\end{itemize}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Generator aggregates at equal $N$ and $d_\text{mob}$: difference from the restructured FLAGE class in \%.
+  $R_{g,\text{F}}^*$ is the interpolated radius of gyration of the generator series in units of $a$.
+  Optical conditions: vacuum wavelength $\lambda$ and real part $m_\text{r}$ of the refractive index ($1.95 + 0.79\mathrm{i}$ or $1.75 + 0.60\mathrm{i}$).
+  Compact series of 30 aggregates per class.
+  The TCCA series with $\Df = 2.2$ does not reach the $d_\text{mob}$ at 0 and \SI{50}{\percent} necks.}
+  \label{tab:equal-dmob}
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{rlccccccccc}
+    \toprule
+    & & & \multicolumn{4}{c}{$Q_\text{abs}$} & \multicolumn{4}{c}{$Q_\text{sca}$} \\
+    \cmidrule(lr){4-7}\cmidrule(lr){8-11}
+    & & $\lambda$ (\si{\micro\meter}): & 0.453 & 0.638 & 0.834 & 0.638 & 0.453 & 0.638 & 0.834 & 0.638 \\
+    Necks (\%) & Series & $R_{g,\text{F}}^*$ \quad $m_\text{r}$: & 1.95 & 1.95 & 1.95 & 1.75 & 1.95 & 1.95 & 1.95 & 1.75 \\
+    \midrule
+    0   & PTSA 2.6 & 7.11  & $-10.0$ & $-10.4$ & $-9.0$ & $-6.9$ & $-3.0$ & $+9.5$  & $+14.3$ & $+13.6$ \\
+        & PTSA 2.2 & 7.08  & $-10.0$ & $-10.4$ & $-9.1$ & $-7.0$ & $-2.5$ & $+10.0$ & $+14.6$ & $+14.0$ \\
+    50  & PTSA 2.6 & 7.50  & $-7.9$  & $-7.5$  & $-5.8$ & $-5.1$ & $-2.8$ & $+9.7$  & $+15.9$ & $+12.6$ \\
+        & PTSA 2.2 & 7.44  & $-8.8$  & $-8.4$  & $-6.7$ & $-5.8$ & $-3.2$ & $+9.8$  & $+15.8$ & $+12.8$ \\
+    100 & PTSA 2.6 & 9.87  & $-1.7$  & $-2.1$  & $-1.6$ & $-1.6$ & $-3.8$ & $-0.3$  & $+6.7$  & $+0.5$ \\
+        & PTSA 2.2 & 10.00 & $-2.8$  & $-2.6$  & $-1.9$ & $-1.9$ & $-3.4$ & $+1.1$  & $+7.8$  & $+1.9$ \\
+        & TCCA 2.2 & 10.32 & $-2.6$  & $-2.8$  & $-2.6$ & $-1.9$ & $-3.5$ & $-1.3$  & $+2.1$  & $-0.4$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Orientational average of the free molecular friction.}
+The projected area in Eq.~\eqref{eq:adjusted-sphere} gives the arithmetic mean of the free molecular friction over orientations, $f_A = \operatorname{tr}\mathbf{K}/3$, where $\mathbf{K}$ is the friction tensor.
+For particles whose orientation changes slowly compared with the relaxation of their velocity, a mobility analyser measures the mean of the mobility.
+This corresponds to the harmonic mean $f_H = 3/\operatorname{tr}\mathbf{K}^{-1}$~\cite{dahneke1973a,li2014,mulholland2016}.
+Our aggregates are in this slow-rotation limit.
+The continuum term $R_\text{S}$ already corresponds to the mean of the mobility.
+We bounded the effect of $f_H$ with the ellipsoid that has the same gyration tensor, with semi-axes $\sqrt{5}\,g_k$ for the principal radii of gyration $g_k$.
+Its free molecular tensor is that of a convex body,
+\begin{equation}
+  \mathbf{K} \propto (\alpha_n - \alpha_t)\,\mathbf{M} + \alpha_t S\,\mathbf{I} , \qquad
+  \mathbf{M} = \oint \hat{\bm{n}}\hat{\bm{n}}\,\dd{S} ,
+  \label{eq:convex-tensor}
+\end{equation}
+with $\alpha_n = (1 - f_\text{d}) + f_\text{d}\,(1/2 + \pi/8)$ and $\alpha_t = f_\text{d}/4$ for the diffuse fraction $f_\text{d} = 0.9$.
+Here $S$ is the surface area and $\hat{\bm{n}}$ the outward normal.
+This tensor reproduces the free molecular resistances of spheroids in Ref.~\cite{dahneke1973b}.
+Replacing $\langle\text{PA}\rangle$ by $\langle\text{PA}\rangle f_H/f_A$ lowers $d_\text{mob}$ by 3.5 to \SI{5.2}{\percent} for the restructured aggregates and by 1.7 to \SI{2.9}{\percent} for the generator aggregates.
+
+An aggregate is not convex, and its monomers shade each other.
+The ellipsoid therefore overestimates $f_A/f_H$.
+As a check we fitted a quadratic form $\hat{\bm{n}}^\top \mathbf{K} \hat{\bm{n}}$ to the projected area in 128 directions.
+This projected-area tensor includes the shading but assumes that the friction in each direction is proportional to the projected area.
+Table~\ref{tab:fa-fh} compares the two estimates.
+The projected-area tensor gives a 3 to 6 times smaller $f_A/f_H - 1$ for the restructured and the $\Df = 1.8$ aggregates.
+Applied to the ellipsoid itself it gives 1.6 to 1.7 times the exact convex-body value, and it fits the projected areas with an rms residual of 2 to \SI{4}{\percent}.
+Neither estimate is exact.
+The ellipsoid value is an upper bound.
+The exact value needs the free molecular friction tensor of the aggregate.
+Monte Carlo methods provide it in the free molecular limit~\cite{mackowski2006}.
+An extended Kirkwood--Riseman theory gives the tensor over the whole Knudsen range~\cite{corson2017}.
+We did not compute it.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Estimates of $f_A/f_H - 1$ in \% (mean over the first 12 aggregates of each class).
+  PA tensor: quadratic form fitted to the projected area in 128 directions.
+  Ellipsoid: convex-body tensor, Eq.~\eqref{eq:convex-tensor}, of the ellipsoid with the same gyration tensor.
+  The fourth column applies the PA-tensor method to that ellipsoid.
+  Generator classes are labelled by method and $\Df$.
+  The rms is the residual of the fit relative to the mean projected area.}
+  \label{tab:fa-fh}
+  \small
+  \setlength{\tabcolsep}{5pt}
+  \begin{tabular}{lccccc}
+    \toprule
+    Class & PA tensor & Ellipsoid & PA tensor of ellipsoid & $\text{PA}_\text{max}/\text{PA}_\text{min}$ & rms (\%) \\
+    \midrule
+    Initial FLAGE ($\Df = 1.8$) & 2.24 & 14.43 & 24.27 & 1.594 & 3.86 \\
+    Restructured, 0\,\% necks & 6.40 & 19.45 & 33.59 & 2.113 & 4.23 \\
+    Restructured, 100\,\% necks & 2.53 & 11.98 & 20.07 & 1.607 & 3.73 \\
+    PTSA 2.0, 0\,\% necks & 0.99 & 5.18 & 8.22 & 1.346 & 3.35 \\
+    TCCA 2.0, 0\,\% necks & 2.02 & 8.03 & 13.27 & 1.511 & 3.35 \\
+    PTSA 2.6, $R_{g,\text{F}} = 7.0\,a$ & 0.35 & 0.63 & 0.99 & 1.198 & 1.95 \\
+    PTSA 2.6, $R_{g,\text{F}} = 10.0\,a$ & 0.85 & 3.79 & 5.96 & 1.327 & 3.04 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Matching $d_\text{mob}$ with the upper bound instead of $f_A$ leaves the result at 0 and \SI{50}{\percent} necks unchanged.
+$Q_\text{abs}$ of the generator aggregates is still lower by 5 to \SI{10}{\percent}, and $Q_\text{sca}$ is higher by up to \SI{28}{\percent}.
+At \SI{100}{\percent} necks the PTSA series then differ by up to \SI{17}{\percent} in $Q_\text{sca}$.
+Only the TCCA series with $\Df = 2.2$ stays within \SI{3.3}{\percent} in $Q_\text{abs}$ and \SI{6.4}{\percent} in $Q_\text{sca}$.
+
+\subsection{Conclusions of steps 1 and 2}
+\label{sec:shape-conclusions}
+
+\begin{itemize}
+  \item Restructuring by the sigmoid force makes the aggregates locally compact and globally open.
+        The coordination number rises to 4.85 without necks, while $R_{g,\text{F}}$ drops by only 13 to \SI{24}{\percent}.
+  \item At equal $N$ and $R_{g,\text{F}}$ the generator aggregates have a 3 to \SI{18}{\percent} larger $d_\text{mob}$ and a 1.6 to \SI{12}{\percent} smaller $Q_\text{abs}$.
+  \item At equal $N$ and $d_\text{mob}$ they still underestimate $Q_\text{abs}$ by 5 to \SI{10}{\percent} when \SI{50}{\percent} of the necks or fewer are intact.
+        Their $Q_\text{sca}$ then deviates by up to \SI{16}{\percent}.
+        Absorption is set by the coordination number, and the generators keep it near 2.
+  \item With all necks intact the generator aggregates come within about \SI{3}{\percent} in $Q_\text{abs}$ at equal $d_\text{mob}$.
+        $Q_\text{sca}$ at \SI{0.834}{\micro\meter} deviates by up to \SI{8}{\percent}.
+  \item Restructured aggregates with few intact necks therefore cannot be represented by generator aggregates with adjusted $\Df$ and $k_\text{f}$.
+        They need a restructuring step.
+\end{itemize}
+
+These results hold for $N = 150$ monomers of equal radius and one DEM parameter set with the sigmoid force.
+The terminal shapes are not fully converged at \SI{49}{\nano\second}.
+Each aggregate was computed in one orientation.
+
+%======================================================================
 \section{Implications and proposed plan}
 \label{sec:plan}
 
@@ -374,11 +714,12 @@ We propose four stages.
 Each stage ends with a check before the next starts.
 
 \begin{enumerate}
-  \item \textbf{Reproduce the paper} (completed, Sec.~\ref{sec:repro}).
+  \item \textbf{Reproduce the paper} (completed, Secs.~\ref{sec:repro} and \ref{sec:shape-optics}).
         Build \texttt{soot-dem} on the desktop.
         Run the published input files and reproduce the coordination number and convexity against necking fraction (Fig.~8 of Ref.~\cite{demidov2024}).
         Then replace the FLAGE aggregates by monodisperse TCCA aggregates from this repository with the same $\Df = 1.8$, $k_\text{f} = 1.4$ and $N = 150$, written in FLAGE format.
         The two runs test the code and the sensitivity to the aggregate generator.
+        Then describe the shape of the restructured aggregates and compare their optics and mobility with generator aggregates.
   \item \textbf{Capillary force from the meniscus.}
         Replace Eq.~\eqref{eq:sigmoid} by the force of a pendular bridge as a function of liquid volume, gap, contact angle and surface tension.
         Add its rupture distance and hysteresis.
@@ -395,6 +736,8 @@ Each stage ends with a check before the next starts.
 
 Whether stages 2--4 are written in C++ inside \texttt{soot-dem} or in Python and Numba in this repository is open.
 Stage~1 gave the run time and showed that the aggregate generator does not matter at $N = 150$ (Sec.~\ref{sec:repro}).
+It also showed that the restructured aggregates differ in optics from any generator aggregate of the same size (Sec.~\ref{sec:shape-optics}).
+A restructuring step is therefore needed to produce them.
 The explicit integration at \SI{5}{\femto\second} over \SI{50}{\nano\second} needs $10^7$ steps, which take about \SI{21}{\minute} on one core for $N = 150$.
 The force loop of \texttt{soot-dem} visits every pair of monomers (Supplemental Material), so the cost grows as $N^2$.
 For $N = 10^4$ this extrapolates to about $1.5 \times 10^3$ core hours per run.
@@ -498,6 +841,66 @@ Effects of wetting hysteresis on pendular liquid bridges between rigid spheres,
 W.~Rong et al.,
 Complementary TEM and AFM force spectroscopy to characterize the nanomechanical properties of nanoparticle chain aggregates,
 \emph{Nano Lett.} \textbf{4}, 2287--2292 (2004).
+
+\bibitem{zhang2012}
+C.~Zhang, T.~Thajudeen, C.~Larriba, T.~E. Schwartzentruber, and C.~J. Hogan,
+Determination of the scalar friction factor for nonspherical particles and aggregates across the entire Knudsen number range by direct simulation Monte Carlo (DSMC),
+\emph{Aerosol Sci.\ Technol.} \textbf{46}, 1065--1078 (2012),
+\href{https://doi.org/10.1080/02786826.2012.690543}{doi:10.1080/02786826.2012.690543}.
+
+\bibitem{dahneke1973a}
+B.~E. Dahneke,
+Slip correction factors for nonspherical bodies---I Introduction and continuum flow,
+\emph{J.\ Aerosol Sci.} \textbf{4}, 139--145 (1973),
+\href{https://doi.org/10.1016/0021-8502(73)90065-7}{doi:10.1016/0021-8502(73)90065-7}.
+
+\bibitem{dahneke1973b}
+B.~E. Dahneke,
+Slip correction factors for nonspherical bodies---II Free molecule flow,
+\emph{J.\ Aerosol Sci.} \textbf{4}, 147--161 (1973),
+\href{https://doi.org/10.1016/0021-8502(73)90066-9}{doi:10.1016/0021-8502(73)90066-9}.
+
+\bibitem{dahneke1973c}
+B.~E. Dahneke,
+Slip correction factors for nonspherical bodies---III The form of the general law,
+\emph{J.\ Aerosol Sci.} \textbf{4}, 163--170 (1973),
+\href{https://doi.org/10.1016/0021-8502(73)90067-0}{doi:10.1016/0021-8502(73)90067-0}.
+
+\bibitem{hubbard1993}
+J.~B. Hubbard and J.~F. Douglas,
+Hydrodynamic friction of arbitrarily shaped Brownian particles,
+\emph{Phys.\ Rev.\ E} \textbf{47}, R2983--R2986 (1993),
+\href{https://doi.org/10.1103/PhysRevE.47.R2983}{doi:10.1103/PhysRevE.47.R2983}.
+
+\bibitem{li2014}
+M.~Li, G.~W. Mulholland, and M.~R. Zachariah,
+Understanding the mobility of nonspherical particles in the free molecular regime,
+\emph{Phys.\ Rev.\ E} \textbf{89}, 022112 (2014),
+\href{https://doi.org/10.1103/PhysRevE.89.022112}{doi:10.1103/PhysRevE.89.022112}.
+
+\bibitem{mulholland2016}
+G.~W. Mulholland, C.~R. Hagwood, M.~Li, and M.~R. Zachariah,
+Effect of particle rotation on the drift velocity for nonspherical aerosol particles,
+\emph{J.\ Aerosol Sci.} \textbf{101}, 65--76 (2016),
+\href{https://doi.org/10.1016/j.jaerosci.2016.04.004}{doi:10.1016/j.jaerosci.2016.04.004}.
+
+\bibitem{mackowski2006}
+D.~W. Mackowski,
+Monte Carlo simulation of hydrodynamic drag and thermophoresis of fractal aggregates of spheres in the free-molecule flow regime,
+\emph{J.\ Aerosol Sci.} \textbf{37}, 242--259 (2006),
+\href{https://doi.org/10.1016/j.jaerosci.2004.11.011}{doi:10.1016/j.jaerosci.2004.11.011}.
+
+\bibitem{corson2017}
+J.~Corson, G.~W. Mulholland, and M.~R. Zachariah,
+Friction factor for aerosol fractal aggregates over the entire Knudsen range,
+\emph{Phys.\ Rev.\ E} \textbf{95}, 013103 (2017),
+\href{https://doi.org/10.1103/PhysRevE.95.013103}{doi:10.1103/PhysRevE.95.013103}.
+
+\bibitem{mackowski2011}
+D.~W. Mackowski and M.~I. Mishchenko,
+A multiple sphere T-matrix Fortran code for use on parallel computer clusters,
+\emph{J.\ Quant.\ Spectrosc.\ Radiat.\ Transfer} \textbf{112}, 2182--2192 (2011),
+\href{https://doi.org/10.1016/j.jqsrt.2011.02.019}{doi:10.1016/j.jqsrt.2011.02.019}.
 
 \bibitem{arxiv2206}
 Mechanisms of soot-aggregate restructuring and compaction,
