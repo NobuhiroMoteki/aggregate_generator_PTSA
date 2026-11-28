@@ -34,6 +34,9 @@ Aggregates from the tunable cluster-cluster aggregation of this repository give 
 The restructured aggregates are locally compact and globally open.
 Generator aggregates with the same number of monomers and the same mobility diameter underestimate their absorption by 5 to 10\,\% when half of the necks or fewer are intact.
 Restructured aggregates therefore cannot be replaced by generator aggregates with adjusted fractal parameters.
+Measurements that could test a physics-based water process are not available in the near term.
+We therefore plan an empirical restructuring generator calibrated against the DEM results instead.
+The plan is on hold.
 \end{abstract}
 
 %======================================================================
@@ -246,7 +249,10 @@ We checked the repositories on 2026-11-26.
         Another reads neck strengths from a file.
         Tensile, shear and torsion test programs for neck strength are included.
   \item Three coating force models (\texttt{coating\_force.h}): the sigmoid of Eq.~\eqref{eq:sigmoid}, a model based on the filling angle of the liquid, and a shrinking-sphere force for thick coatings.
-        We have not yet read their equations.
+        We read the filling-angle model in the version of 2026-11-23 (commit \texttt{cae0911}).
+        It acts on the angle between two neighbours of a monomer and switches on by a $\tanh$ when this angle falls below twice the filling angle.
+        Its magnitude is prescribed as in Eq.~\eqref{eq:sigmoid}.
+        Surface tension and liquid volume do not enter.
   \item An experimental resolved-liquid model (\texttt{capillary/}) that couples smoothed-particle hydrodynamics to the DEM.
         The authors' own status file of 2026-11-05 states that the surface-tension calibration has not passed and that the bridge force is not validated.
 \end{itemize}
@@ -364,7 +370,7 @@ The \SI{2}{\percent} larger radius of gyration of the TCCA set has no detectable
 
 For $\Df = 1.8$ and $N = 150$, the choice between FLAGE and the TCCA of this repository therefore does not change the restructured morphology.
 Only the number of contacts carries over when nearly all necks are intact.
-The TCCA aggregates of this repository can thus serve as input for the later stages.
+The TCCA aggregates of this repository can thus serve as input for the restructuring generator of Sec.~\ref{sec:empirical-plan}.
 Whether this holds for PTSA aggregates, polydisperse monomers and larger $N$ has not been tested.
 
 %======================================================================
@@ -708,40 +714,109 @@ Each aggregate was computed in one orientation.
 \section{Implications and proposed plan}
 \label{sec:plan}
 
-The decoupling of time scales (Sec.~\ref{sec:results}) allows a quasi-static treatment.
-The liquid state is advanced in steps, and the aggregate is relaxed mechanically after each step.
-We propose four stages.
-Each stage ends with a check before the next starts.
+\subsection{Stage 1: reproduction (completed)}
+
+We built \texttt{soot-dem} and reproduced the coordination number and the convexity against necking fraction of Fig.~8 of Ref.~\cite{demidov2024} (Sec.~\ref{sec:repro}).
+The TCCA aggregates of this repository gave the same restructured morphology as the published aggregates.
+We then described the shape of the restructured aggregates and compared their optics and mobility with generator aggregates (Sec.~\ref{sec:shape-optics}).
+The restructured aggregates differ in optics from any generator aggregate of the same size.
+A restructuring step is therefore needed to produce them.
+
+\subsection{Decision against a physics-based water process}
+\label{sec:no-physics}
+
+The earlier plan had three further stages.
+Stage~2 would replace Eq.~\eqref{eq:sigmoid} by the force of a pendular bridge derived from the liquid volume, gap, contact angle and surface tension.
+Stage~3 would compute the liquid volume at each junction from condensation and evaporation, with the Kelvin effect for concave junctions~\cite{ivanova2020}.
+Stage~4 would break necks under the capillary load and calibrate the neck strength and contact angle against compaction measurements~\cite{chen2018,enekwizu2021,bhandari2019}.
+
+We do not pursue these stages (decision of 2026-11-28).
+Measurements that could test such a model at the level of single aggregates are not available in the near term.
+The restructured aggregates of this repository serve as input for optics and mobility calculations.
+For this use only the ensemble of terminal shapes matters, not the path that leads to it.
+We therefore replace stages 2--4 by an empirical restructuring generator.
+Its parameters are constrained by the DEM results of this note and later by measurements of mass and mobility.
+The plan below is on hold, and no runs or code have been started.
+
+\subsection{Plan for an empirical restructuring generator}
+\label{sec:empirical-plan}
+
+The baseline engine is the model of Ref.~\cite{demidov2024} as it stands.
+The sigmoid force of Eq.~\eqref{eq:sigmoid} drives the restructuring, and the necking fraction is a parameter.
+A cheaper engine replaces it only if the cost test of phase~1 fails.
+Each phase ends with a check before the next starts.
 
 \begin{enumerate}
-  \item \textbf{Reproduce the paper} (completed, Secs.~\ref{sec:repro} and \ref{sec:shape-optics}).
-        Build \texttt{soot-dem} on the desktop.
-        Run the published input files and reproduce the coordination number and convexity against necking fraction (Fig.~8 of Ref.~\cite{demidov2024}).
-        Then replace the FLAGE aggregates by monodisperse TCCA aggregates from this repository with the same $\Df = 1.8$, $k_\text{f} = 1.4$ and $N = 150$, written in FLAGE format.
-        The two runs test the code and the sensitivity to the aggregate generator.
-        Then describe the shape of the restructured aggregates and compare their optics and mobility with generator aggregates.
-  \item \textbf{Capillary force from the meniscus.}
-        Replace Eq.~\eqref{eq:sigmoid} by the force of a pendular bridge as a function of liquid volume, gap, contact angle and surface tension.
-        Add its rupture distance and hysteresis.
-        First evaluate the filling-angle model already in \texttt{soot-dem}.
-  \item \textbf{Liquid distribution from condensation and evaporation.}
-        Compute the liquid volume at each junction from the saturation ratio, with the Kelvin effect for concave junctions~\cite{ivanova2020}.
-        Evaporation reduces the volumes stepwise.
-        Thick coatings need the shrinking-droplet force instead of pairwise bridges.
-  \item \textbf{Neck fracture and calibration.}
-        Break necks when the capillary load exceeds a neck strength.
-        Calibrate the strength and contact angle against compaction measurements~\cite{chen2018,enekwizu2021,bhandari2019}.
-        Then extend to polydisperse monomers and write results to HDF5.
+  \setcounter{enumi}{-1}
+  \item \textbf{Acceptance criteria.}
+        The stored runs of Sec.~\ref{sec:repro} serve as the regression target.
+        They hold the initial and terminal coordinates of $2 \times 500$ aggregates.
+        Any engine must reproduce, for each necking fraction, the class means of the coordination number, $R_{g,\text{F}}$, $\langle\text{PA}\rangle$, the convexity and the elongation within the 95\,\% confidence intervals of Tables~\ref{tab:repro} and \ref{tab:shape}.
+        It must also reproduce the optics and mobility of step~2 (Sec.~\ref{sec:step2}).
+        Provisional tolerances are \SI{2}{\percent} in $Q_\text{abs}$, \SI{3}{\percent} in $Q_\text{sca}$ and \SI{1.5}{\percent} in $d_\text{mob}$.
+        They lie well below the deviations of 5 to \SI{16}{\percent} of the generator aggregates.
+        The final tolerances should follow from the error budget of the optical retrievals that use the aggregates.
+  \item \textbf{Pilot runs and cost gate.}
+        Run the unmodified \texttt{soot-dem} with $N = 500$ and 1000 monodisperse TCCA aggregates ($\Df = 1.8$) at 0, 50 and \SI{100}{\percent} necks, a few runs each.
+        Measure the run time and the time until $R_{g,\text{F}}$ stops changing.
+        This time may grow with $N$, and it was not reached within \SI{49}{\nano\second} even at $N = 150$.
+        Multiply the cost per run by the number of aggregates that a lookup table for optics needs.
+        A table like the existing one has about 650 nodes with 10 aggregates each and $N$ up to about 2800, and restructuring adds parameter dimensions.
+        If the projected total, with the speed-up of a neighbour list, fits a budget of a few weeks on one workstation, continue with engine A.
+        Otherwise continue with engine B.
+  \item[2A.] \textbf{Engine A: extended \texttt{soot-dem}.}
+        Fork \texttt{soot-dem} under its MIT license.
+        Add a neighbour list (cell list) to the force loop, monomer radii per particle and a stopping rule.
+        Check that the fork reproduces Tables~\ref{tab:repro} and \ref{tab:shape} at $N = 150$ in the statistical sense.
+  \item[2B.] \textbf{Engine B: cheaper surrogate in this repository.}
+        Two candidates are an overdamped relaxation under the same sigmoid force and a kinematic folding scheme.
+        The folding scheme treats bonds without necks as hinges and rotates branches until a new contact forms.
+        Similar migration rules exist for ballistic aggregates~\cite{shen2008}, and the literature should be checked first.
+        Fit the parameters of the surrogate to the criteria of phase~0.
+        If the criteria cannot be met, return to engine A.
+  \item[3.] \textbf{Extension.}
+        Apply the engine to PTSA aggregates, to a range of $\Df$ and $k_\text{f}$, to polydisperse monomers and to larger $N$.
+        With engine B, compare with a few DEM runs at $N = 500$ to 1000.
+        No DEM reference exists for polydisperse monomers.
+  \item[4.] \textbf{Integration.}
+        Write the restructured aggregates in the HDF5 format of this repository.
+        Add the restructuring parameters to the group key.
+        Add the necking fraction, the coordination number and the overlap scaling to the catalog.
+        Add a command-line interface and tests.
 \end{enumerate}
 
-Whether stages 2--4 are written in C++ inside \texttt{soot-dem} or in Python and Numba in this repository is open.
-Stage~1 gave the run time and showed that the aggregate generator does not matter at $N = 150$ (Sec.~\ref{sec:repro}).
-It also showed that the restructured aggregates differ in optics from any generator aggregate of the same size (Sec.~\ref{sec:shape-optics}).
-A restructuring step is therefore needed to produce them.
-The explicit integration at \SI{5}{\femto\second} over \SI{50}{\nano\second} needs $10^7$ steps, which take about \SI{21}{\minute} on one core for $N = 150$.
+The calibration of the parameters against measurements of mass and mobility lies outside this repository.
+The estimated effort is four to five weeks with engine B and six to seven weeks with engine A.
+
+\paragraph{Open decisions.}
+\begin{itemize}
+  \item \textbf{Parameters and identifiability.}
+        Measurements of mass and mobility constrain about one parameter, the degree of compaction.
+        At equal $d_\text{mob}$ the coordination number still changes $Q_\text{abs}$ by 5 to \SI{10}{\percent} (Sec.~\ref{sec:step2}).
+        We propose to keep the necking fraction, or the coordination number, as a prior width rather than to calibrate it.
+  \item \textbf{Stopping rule.}
+        A fixed time, a convergence criterion, or the degree of compaction as a parameter.
+  \item \textbf{Sigmoid force between monomers of unequal radius.}
+        No reference exists, so this is a modelling choice.
+        One option scales the magnitude with the reduced radius.
+  \item \textbf{Initial ensemble.}
+        PTSA or TCCA, and the range of $\Df$ and $k_\text{f}$.
+        Only $\Df = 1.8$ has been tested.
+  \item \textbf{Overlaps in the optics input.}
+        The uniform scaling of Sec.~\ref{sec:shape-optics} changes $R_{g,\text{F}}$.
+        A local separation of overlapping pairs avoids this.
+        The geometry of the necks in the optics is a separate question.
+  \item \textbf{Location of the code.}
+        Engine A is C++ in a fork of \texttt{soot-dem}, and engine B lives in this repository.
+\end{itemize}
+
+\paragraph{Cost.}
+The explicit integration at \SI{5}{\femto\second} over \SI{50}{\nano\second} needs $10^7$ steps.
+They take about \SI{21}{\minute} on one core for $N = 150$.
 The force loop of \texttt{soot-dem} visits every pair of monomers (Supplemental Material), so the cost grows as $N^2$.
 For $N = 10^4$ this extrapolates to about $1.5 \times 10^3$ core hours per run.
-Large aggregates therefore need a neighbour list, a quasi-static energy minimisation, or both.
+A neighbour list makes the cost per step grow as $N$.
+The time to reach the terminal shape may still grow with $N$.
 
 %======================================================================
 \section{Reading list}
@@ -773,7 +848,8 @@ Bibliographic data are taken from the reference list of Ref.~\cite{demidov2024} 
   \end{tabular}
 \end{table}
 
-A closed-form force law for pendular bridges between spheres (for example by Willett and co-workers) is also needed for stage~2.
+A physics-based force law would also need a closed form for pendular bridges between spheres (for example by Willett and co-workers).
+We do not pursue it at present (Sec.~\ref{sec:no-physics}).
 
 %======================================================================
 \begin{thebibliography}{99}
@@ -831,6 +907,12 @@ Extensive soot compaction by cloud processing from laboratory and field observat
 E.~G. Schnitzler, J.~M. Gac, and W.~J\"ager,
 Coating surface tension dependence of soot aggregate restructuring,
 \emph{J.\ Aerosol Sci.} \textbf{106}, 43--55 (2017).
+
+\bibitem{shen2008}
+Y.~Shen, B.~T. Draine, and E.~T. Johnson,
+Modeling porous dust grains with ballistic aggregates. I. Geometry and optical properties,
+\emph{Astrophys.\ J.} \textbf{689}, 260--275 (2008),
+\href{https://doi.org/10.1086/592765}{doi:10.1086/592765}.
 
 \bibitem{willett2003}
 C.~D. Willett et al.,
